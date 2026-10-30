@@ -35,7 +35,7 @@ function sourceLines(md: any) {
   })
 }
 
-function createMarp(): Marp {
+function createMarp(extraThemes: string[]): Marp {
   const marp = new Marp({
     inlineSVG: true,
     html: true,
@@ -46,25 +46,44 @@ function createMarp(): Marp {
   })
   marp.use(sourceLines)
   for (const css of CUSTOM_THEME_CSS) marp.themeSet.add(css)
+  // Workspace themes are registered on top of the built-ins; a later add with
+  // the same @theme name overrides an earlier one.
+  for (const css of extraThemes) {
+    try { marp.themeSet.add(css) } catch { /* a malformed theme file should not break rendering */ }
+  }
   return marp
 }
 
-const marp = createMarp()
+// One Marp per distinct set of workspace themes, so multiple windows with
+// different themes never clash. Keyed by the joined theme CSS.
+const marpCache = new Map<string, Marp>()
+
+function marpFor(extraThemes: string[]): Marp {
+  const key = extraThemes.join('\u0000')
+  let marp = marpCache.get(key)
+  if (!marp) {
+    marp = createMarp(extraThemes)
+    if (marpCache.size > 8) marpCache.clear()
+    marpCache.set(key, marp)
+  }
+  return marp
+}
 
 function aspectOf(svg: string | undefined): number {
   const m = svg?.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/)
   return m ? Number(m[1]) / Number(m[2]) : 16 / 9
 }
 
-export function render(source: string): RenderResult {
+export function render(source: string, extraThemes: string[] = []): RenderResult {
+  const marp = marpFor(extraThemes)
   const { html, css, comments } = marp.render(source, { htmlAsArray: true })
   const slides = html as unknown as string[]
   const theme = marp.lastGlobalDirectives?.theme ?? 'default'
   return { slides, css, notes: comments as string[][], aspect: aspectOf(slides[0]), theme }
 }
 
-export function themes(): string[] {
-  return [...marp.themeSet.themes()].map((t) => t.name)
+export function themes(extraThemes: string[] = []): string[] {
+  return [...marpFor(extraThemes).themeSet.themes()].map((t) => t.name)
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
@@ -73,8 +92,8 @@ const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
  * A self-contained HTML deck: Marp CSS + inline-SVG slides + a tiny keyboard
  * navigator. Opens anywhere, prints to PDF with one slide per page.
  */
-export function exportHtml(source: string, title: string): string {
-  const r = render(source)
+export function exportHtml(source: string, title: string, extraThemes: string[] = []): string {
+  const r = render(source, extraThemes)
   const slides = r.slides.map((s, i) => `<div class="slide" data-index="${i}">${s}</div>`).join('\n')
   const [w, h] = r.aspect >= 1 ? [1280, Math.round(1280 / r.aspect)] : [Math.round(720 * r.aspect), 720]
   return `<!doctype html>

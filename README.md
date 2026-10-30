@@ -1,8 +1,9 @@
 # edi · marp
 
 A native macOS editor for [Marp](https://marp.app) markdown slide decks, built with
-SwiftUI. Write markdown on the left, watch the deck render on the right, and drive
-everything with native sidebars, inspectors, menus, and keyboard shortcuts.
+SwiftUI. Open a **workspace folder** holding your deck, theme CSS, and images; write
+markdown on the left, watch the deck render on the right, and drive everything with
+native sidebars, inspectors, menus, and keyboard shortcuts.
 
 The guiding idea: **the markdown is the single source of truth.** Every GUI action —
 toggling a directive, switching themes, reordering slides — is a pure
@@ -32,6 +33,11 @@ xcodebuild -project EdiMarp.xcodeproj -scheme EdiMarp -configuration Debug \
 open build/DerivedData/Build/Products/Debug/EdiMarp.app
 ```
 
+On first launch, open a folder as a **workspace** (⌘O) or create one (⌘⇧N). A
+workspace is any folder; the app finds the markdown decks and `/* @theme */` CSS files
+in it, and resolves image paths relative to it. Access to the folder persists across
+launches via a security-scoped bookmark.
+
 ## Architecture
 
 ```
@@ -46,18 +52,21 @@ engine/                 TypeScript: @marp-team/marp-core bundled to one IIFE tha
                         slides and exports a standalone HTML deck. No network access.
 
 EdiMarp/                The SwiftUI app.
-  Document/             DeckDocument (ReferenceFileDocument) + DeckSession, the
-                        per-window state that turns transforms into undoable edits.
-  Editor/               NSTextView wrapper: markdown syntax highlighting, a gutter
-                        that numbers lines and badges slide boundaries.
+  Workspace/            Workspace (the folder, its decks, themes, file tree, and the
+                        active DeckSession), the security-scoped bookmark, and the
+                        ediasset:// scheme handler that serves workspace images.
+  Document/             DeckSession: the active deck's parse, render, preview state,
+                        and undoable mutations, autosaved to its file.
+  Editor/               NSTextView wrapper with markdown and CSS highlighting and a
+                        gutter that numbers lines and badges slide boundaries.
   Engine/               MarpEngine (the hidden render WebView) and SlideHostView
                         (one slide in its own transparent WebView).
-  Views/                NavigationSplitView shell, slide sidebar, focus/grid preview,
-                        inspector, presenter, status bar, toolbar.
-  Export/               Standalone HTML, vector PDF (one slide per page), print.
+  Views/                NavigationSplitView shell, sidebar (slides / files), editor
+                        pane, focus/grid preview, inspector, presenter, toolbar.
+  Export/               Standalone HTML (images inlined), vector PDF, print.
 ```
 
-Three things worth calling out:
+Things worth calling out:
 
 - **The markdown is the only state.** `DeckSession.apply` runs a transform and feeds the
   resulting edits to the text view, so a click in the inspector and a keystroke land on
@@ -66,9 +75,15 @@ Three things worth calling out:
 - **Cursor and slide stay in sync, both ways.** The slide under the cursor is always the
   one shown; clicking a block in the preview jumps the editor to its source line. A
   markdown-it plugin stamps each block with its line number for the round trip.
+- **The editor shows one "current file".** The `</>` and brush buttons jump to the active
+  deck and its theme CSS; the file explorer opens any file in the workspace. Each open
+  file keeps its own buffer and undo stack, while the preview always tracks the deck.
+- **Themes are editable text.** Point the deck at a `/* @theme name */` file in the
+  workspace and the brush opens it; editing re-renders the deck live. With a built-in
+  theme the brush offers to create an editable custom copy.
 - **Rendering is isolated.** Marp runs as JavaScript in a hidden WebView, so a parse error
-  never takes down the UI, and each slide is drawn in its own Shadow-DOM-like WebView on a
-  transparent background that the native layout letterboxes.
+  never takes down the UI; each slide draws in its own transparent WebView, and images
+  are served from the workspace through a private URL scheme.
 
 ## Keyboard shortcuts
 
@@ -83,8 +98,12 @@ Three things worth calling out:
 | `⌘ 1 / 2 / 3` | Editor · Split · Preview layout |
 | `⌥ ⌘ G` | Toggle slide grid |
 | `⌥ ⌘ I` | Toggle inspector |
+| `⌥ ⌘ 1 / 2` | Edit deck markdown / theme CSS |
+| `⌘ 0` | Sidebar: slides / files |
 | `⌥ ⌘ P` | Start presenting |
+| `⌘ O` · `⌘ ⇧ N` | Open / new workspace |
 | `⌘ S` · `⌘ ⇧ E` · `⌘ P` | Save · Export HTML · Print |
+| `⌃ ⌘ R` | Reload engine |
 
 In the presenter window: arrows / space / `j` `k` `h` `l` to move, `N` for speaker
 notes with a next-slide preview, `Esc` to exit.
@@ -92,8 +111,9 @@ notes with a next-slide preview, `Esc` to exit.
 ## Themes
 
 Marp's `default`, `gaia`, and `uncover`, plus two that ship with the app: **paper** (a
-serif editorial look) and **noir** (black with a lime accent). Their CSS lives in
-`engine/src/themes/`.
+serif editorial look) and **noir** (black with a lime accent); their CSS lives in
+`engine/src/themes/`. A workspace can hold its own `/* @theme name */` CSS files, which
+appear in the theme menu and can be edited as text with the brush button.
 
 ## Tests
 
@@ -101,9 +121,15 @@ serif editorial look) and **noir** (black with a lime accent). Their CSS lives i
 cd Packages/EdiCore && swift test     # parser + transforms
 ```
 
-The app also has an opt-in scripted smoke test that drives a real window through every
-slide operation, undo, theme switch, and layout change:
-`EDIMARP_DEBUG=/tmp/diag.log EDIMARP_DEBUG_SCRIPT=1 open -n EdiMarp.app`.
+The app also has an opt-in scripted smoke test (32 checks) that drives a real window
+through every slide operation, undo, theme switch, layout change, the editor's deck /
+theme toggle, and the custom-theme flow:
+
+```bash
+EDIMARP_DEBUG=/tmp/diag.log EDIMARP_DEBUG_SCRIPT=1 \
+  EDIMARP_TEST_WORKSPACE=/path/to/a/workspace \
+  EdiMarp.app/Contents/MacOS/EdiMarp -ApplePersistenceIgnoreState YES
+```
 
 ## Headless export
 
@@ -112,8 +138,26 @@ EDIMARP_EXPORT_INPUT=deck.md EDIMARP_EXPORT_OUTPUT=deck.pdf \
   EdiMarp.app/Contents/MacOS/EdiMarp      # .pdf or .html
 ```
 
+Sibling `.css` theme files and relative images in the deck's folder are included;
+exported HTML inlines images as data URIs so the file is self-contained.
+
+## Engine live reload
+
+The app watches the engine bundle inside its own `.app` and reloads it on change
+(re-rendering open decks). To iterate on the engine without restarting, point Vite's
+output at the built app and run it in watch mode:
+
+```bash
+cd engine
+EDIMARP_OUT_DIR="$(cd ..; pwd)/build/DerivedData/Build/Products/Debug/EdiMarp.app/Contents/Resources" \
+  npm run watch
+```
+
+(The sandbox lets the app read only its own bundle, so live reload writes there rather
+than to the source tree.) `⌃⌘R` reloads the engine manually.
+
 ## Not included
 
 - PPTX / Keynote export (HTML and PDF only).
-- Image/asset embedding beyond what the markdown references by path.
-- Live reload of the engine bundle; rebuild `engine/` after changing it.
+- Recursive workspace scanning for decks and themes (top-level only).
+- Automatic asset management beyond serving what the markdown references by path.

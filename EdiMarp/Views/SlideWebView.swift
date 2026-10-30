@@ -7,6 +7,7 @@ struct SlideWebView: NSViewRepresentable {
     var svg: String
     var interactive = false
     var passthrough = false
+    var assetRoot: URL? = nil
     var onLine: ((Int) -> Void)? = nil
     var onClick: (() -> Void)? = nil
     var onDoubleClick: (() -> Void)? = nil
@@ -16,11 +17,12 @@ struct SlideWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: SlideHostView, context: Context) {
+        view.assetRoot = assetRoot
         view.passthrough = passthrough
         view.onLine = onLine
         view.onClick = onClick
         view.onDoubleClick = onDoubleClick
-        view.update(css: css, svg: svg, interactive: interactive)
+        view.update(css: css, rawSVG: svg, interactive: interactive)
     }
 }
 
@@ -44,6 +46,7 @@ struct SlideCard: View {
                 .shadow(color: .black.opacity(0.22), radius: shadow, y: shadow / 2)
             if let render = session.render, let svg = session.svg(for: index) {
                 SlideWebView(css: render.css, svg: svg, interactive: interactive, passthrough: passthrough,
+                             assetRoot: session.assetRoot,
                              onLine: onLine, onClick: onClick, onDoubleClick: onDoubleClick)
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             } else {

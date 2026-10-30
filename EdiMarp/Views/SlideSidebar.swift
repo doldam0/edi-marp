@@ -1,5 +1,35 @@
 import SwiftUI
 
+/// The left sidebar: a segmented toggle between slide thumbnails and the
+/// workspace file explorer, over the chosen content.
+struct WorkspaceSidebar: View {
+    @ObservedObject var workspace: Workspace
+
+    var body: some View {
+        Group {
+            if workspace.sidebarMode == .slides {
+                SlideSidebar(session: workspace.deck)
+            } else {
+                FileExplorer(workspace: workspace)
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Picker("", selection: Binding(
+                get: { workspace.sidebarMode },
+                set: { workspace.sidebarMode = $0; UserDefaults.standard.set($0.rawValue, forKey: Pref.sidebarMode) }
+            )) {
+                Label("슬라이드", systemImage: "rectangle.on.rectangle").tag(Workspace.SidebarMode.slides)
+                Label("파일", systemImage: "folder").tag(Workspace.SidebarMode.files)
+            }
+            .pickerStyle(.segmented)
+            .labelStyle(.iconOnly)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(.bar)
+        }
+    }
+}
+
 /// Thumbnails in a native sidebar list: click to jump, drag to reorder,
 /// right-click for slide actions. Reordering is just another text edit.
 struct SlideSidebar: View {

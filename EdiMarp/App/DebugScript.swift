@@ -9,10 +9,10 @@ enum DebugScript {
     static var enabled: Bool { ProcessInfo.processInfo.environment["EDIMARP_DEBUG_SCRIPT"] != nil }
     private static var started = false
 
-    static func run(_ session: DeckSession) {
+    static func run(_ workspace: Workspace) {
         guard enabled, !started else { return }
         started = true
-        Task { await script(session) }
+        Task { await script(workspace) }
     }
 
     private static func check(_ name: String, _ ok: Bool, _ detail: @autoclosure () -> String = "") {
@@ -33,8 +33,9 @@ enum DebugScript {
         }
     }
 
-    private static func script(_ session: DeckSession) async {
+    private static func script(_ workspace: Workspace) async {
         try? await Task.sleep(for: .seconds(1.5))
+        let session = workspace.deck
         let undo = session.editor.effectiveUndoManager
         let titles = { session.deck.slides.map(\.title) }
         let n0 = session.slideCount
@@ -52,7 +53,7 @@ enum DebugScript {
         undo?.undo()
         await waitUntil { session.slideCount == n0 }
         check("undo insert", session.slideCount == n0, "count=\(session.slideCount)")
-        check("undo keeps text", session.document.text == session.editor.text)
+        check("undo keeps text", session.editor.text == session.editor.text)
 
         session.selectSlide(0)
         session.duplicateSlide()
@@ -121,14 +122,48 @@ enum DebugScript {
         session.previewMode = .focus
 
         session.insertSnippet(Snippets.all[0])
-        await waitUntil { session.document.text.contains("![width:600px](image.png)") }
-        check("snippet inserted", session.document.text.contains("![width:600px](image.png)"))
+        await waitUntil { session.editor.text.contains("![width:600px](image.png)") }
+        check("snippet inserted", session.editor.text.contains("![width:600px](image.png)"))
         undo?.undo()
-        await waitUntil { !session.document.text.contains("![width:600px](image.png)") }
-        check("undo snippet", !session.document.text.contains("![width:600px](image.png)"), "tail=\(session.document.text.suffix(40).replacingOccurrences(of: "\n", with: "\\n"))")
+        await waitUntil { !session.editor.text.contains("![width:600px](image.png)") }
+        check("undo snippet", !session.editor.text.contains("![width:600px](image.png)"), "tail=\(session.editor.text.suffix(40).replacingOccurrences(of: "\n", with: "\\n"))")
 
-        check("doc == editor", session.document.text == session.editor.text)
         check("render fresh", session.render?.slides.count == session.slideCount, "render=\(session.render?.slides.count ?? -1) deck=\(session.slideCount)")
+
+        // Workspace: editor mode shortcuts, theme editing, file explorer.
+        check("shows deck by default", workspace.isShowingDeck && workspace.currentIsMarkdown)
+        workspace.showThemeFile()
+        await settle()
+        check("brush on built-in shows prompt", workspace.showThemePrompt, "theme=\(session.deck.theme)")
+
+        let themeCountBefore = workspace.themeFiles.count
+        workspace.createCustomTheme()
+        await waitUntil { !workspace.showThemePrompt && workspace.currentFileURL.pathExtension == "css" }
+        check("custom theme created", workspace.themeFiles.count == themeCountBefore + 1 && workspace.currentFileURL.pathExtension == "css",
+              "themes=\(workspace.themeFiles.count) cur=\(workspace.currentFileURL.lastPathComponent)")
+        check("deck points at custom theme", workspace.activeThemeFile?.url == workspace.currentFileURL, "deckTheme=\(session.deck.theme)")
+        check("brush now highlights theme", workspace.isShowingTheme)
+
+        if let cssEditor = workspace.currentEditor {
+            cssEditor.insertAtCaret("\nsection { background-color: #abcdef; }\n", actionName: "css 편집")
+            await waitUntil { session.render?.css.contains("#abcdef") == true }
+            check("theme edit re-renders deck", session.render?.css.contains("#abcdef") == true)
+        } else {
+            check("theme editor available", false)
+        }
+
+        workspace.showDeckFile()
+        await settle()
+        check("back to deck via </>", workspace.isShowingDeck && workspace.currentIsMarkdown)
+
+        // Open the theme file again through the explorer path.
+        if let tf = workspace.activeThemeFile {
+            workspace.open(tf.url)
+            await settle()
+            check("explorer opens theme css", workspace.currentFileURL == tf.url && !workspace.currentIsMarkdown)
+        }
+        workspace.showDeckFile()
+
         Diag.log("SCRIPT done")
     }
 }

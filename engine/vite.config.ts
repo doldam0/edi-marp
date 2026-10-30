@@ -13,7 +13,9 @@ export default defineConfig({
   define: { 'process.env.NODE_ENV': '"production"' },
   build: {
     lib: { entry: 'src/index.ts', name: 'EdiEngine', formats: ['iife'], fileName: () => 'engine.js' },
-    outDir: '../EdiMarp/Resources/Web',
+    // Override to the built app's Resources folder for live reload:
+    //   EDIMARP_OUT_DIR=<App>.app/Contents/Resources npm run watch
+    outDir: process.env.EDIMARP_OUT_DIR || '../EdiMarp/Resources/Web',
     emptyOutDir: false,
     sourcemap: false,
     minify: true,

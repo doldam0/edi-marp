@@ -2,8 +2,9 @@ import SwiftUI
 import Combine
 import EdiCore
 
-/// Per-window state: the parsed deck, the render, the active slide and the
-/// editor controller. Every mutation goes through `apply`, which turns a pure
+/// The deck being edited and previewed in a window: the parsed deck, the
+/// render, the active slide, and the markdown editor. Backed by a file on disk
+/// (autosaved). Every mutation goes through `apply`, which turns a pure
 /// transform into one undoable text edit.
 @MainActor
 final class DeckSession: ObservableObject {
@@ -25,8 +26,13 @@ final class DeckSession: ObservableObject {
     enum PreviewMode: String { case focus, grid }
     enum Caret { case start, end }
 
-    let document: DeckDocument
+    let fileURL: URL
     let editor: EditorController
+
+    /// Workspace theme CSS passed to the engine; re-renders when it changes.
+    var extraThemes: [String] { didSet { if extraThemes != oldValue { scheduleRender() } } }
+    /// Folder used to resolve relative image paths in the preview.
+    var assetRoot: URL?
 
     @Published private(set) var deck: Deck
     @Published private(set) var render: RenderResult?
@@ -34,7 +40,7 @@ final class DeckSession: ObservableObject {
     @Published private(set) var isRendering = false
     @Published private(set) var activeSlide = 0
     @Published private(set) var cursorLine = 0
-    @Published var fileURL: URL?
+    @Published private(set) var isDirty = false
 
     @Published var layout: Layout {
         didSet { UserDefaults.standard.set(layout.rawValue, forKey: Pref.layout) }
@@ -47,13 +53,15 @@ final class DeckSession: ObservableObject {
     }
 
     private var renderTask: Task<Void, Never>?
-    private var cancellables = Set<AnyCancellable>()
+    private var saveTask: Task<Void, Never>?
+    private var reloadObserver: NSObjectProtocol?
 
-    init(document: DeckDocument) {
-        self.document = document
+    init(fileURL: URL, text: String, extraThemes: [String]) {
+        self.fileURL = fileURL
+        self.extraThemes = extraThemes
         let defaults = UserDefaults.standard
-        deck = Deck(parsing: document.text)
-        editor = EditorController(text: document.text)
+        deck = Deck(parsing: text)
+        editor = EditorController(text: text, language: .markdown)
         layout = Layout(rawValue: defaults.string(forKey: Pref.layout) ?? "") ?? .split
         previewMode = PreviewMode(rawValue: defaults.string(forKey: Pref.previewMode) ?? "") ?? .focus
         inspectorShown = defaults.bool(forKey: Pref.inspector)
@@ -62,21 +70,16 @@ final class DeckSession: ObservableObject {
         editor.onTextChange = { [weak self] text in self?.textChanged(text) }
         editor.onSelectionChange = { [weak self] offset in self?.caretChanged(to: offset) }
 
-        // Only genuinely external changes (Revert To…, file reload) flow back
-        // into the editor. Delivered synchronously so `writingToDocument` is
-        // still set for document writes we make ourselves — otherwise the
-        // editor and the document would ping-pong forever.
-        document.$text
-            .dropFirst()
-            .sink { [weak self] text in
-                guard let self, !self.writingToDocument, self.editor.text != text else { return }
-                // Replacing the text fires the editor's change signal, which
-                // reparses the deck and re-renders; no manual sync needed here.
-                self.editor.replaceAll(with: text)
-            }
-            .store(in: &cancellables)
+        reloadObserver = NotificationCenter.default.addObserver(
+            forName: MarpEngine.didReloadNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.scheduleRender(delay: .milliseconds(100)) }
+        }
 
         scheduleRender(delay: .zero)
+    }
+
+    deinit {
+        if let reloadObserver { NotificationCenter.default.removeObserver(reloadObserver) }
     }
 
     // MARK: Derived
@@ -84,9 +87,7 @@ final class DeckSession: ObservableObject {
     var slideCount: Int { deck.slideCount }
     var activeSlideModel: Slide? { deck.slides.indices.contains(activeSlide) ? deck.slides[activeSlide] : nil }
     var aspect: Double { render?.aspect ?? 16 / 9 }
-    var title: String {
-        fileURL?.deletingPathExtension().lastPathComponent ?? deck.globals["title"] ?? deck.slides.first?.title ?? "제목 없음"
-    }
+    var title: String { fileURL.deletingPathExtension().lastPathComponent }
 
     func svg(for index: Int) -> String? {
         guard let render, render.slides.indices.contains(index) else { return nil }
@@ -100,20 +101,12 @@ final class DeckSession: ObservableObject {
 
     // MARK: Text flow
 
-    /// True while we are writing the editor's text back into the document, so
-    /// the document subscription does not treat it as an external change.
-    private var writingToDocument = false
-
     private func textChanged(_ text: String) {
-        if document.text != text {
-            writingToDocument = true
-            document.text = text
-            writingToDocument = false
-        }
         deck = Deck(parsing: text)
         editor.deck = deck
         caretMoved(to: editor.caretOffset)
         scheduleRender()
+        scheduleSave(text)
     }
 
     private var caretCoalescePending = false
@@ -136,18 +129,22 @@ final class DeckSession: ObservableObject {
         let line = deck.lineIndex(atOffset: offset)
         let slide = deck.slideIndex(atLine: line)
         if line != cursorLine { cursorLine = line }
-        if slide != activeSlide { activeSlide = slide }
+        if slide != activeSlide {
+            activeSlide = slide
+            editor.activeSlide = slide
+        }
     }
 
     func scheduleRender(delay: Duration = .milliseconds(60)) {
         renderTask?.cancel()
         let source = deck.source
+        let themes = extraThemes
         isRendering = true
         renderTask = Task { [weak self] in
             if delay > .zero { try? await Task.sleep(for: delay) }
             guard !Task.isCancelled else { return }
             do {
-                let result = try await MarpEngine.shared.render(source)
+                let result = try await MarpEngine.shared.render(source, extraThemes: themes)
                 guard !Task.isCancelled, let self else { return }
                 self.render = result
                 self.renderError = nil
@@ -160,13 +157,32 @@ final class DeckSession: ObservableObject {
         }
     }
 
+    // MARK: Saving
+
+    private func scheduleSave(_ text: String) {
+        isDirty = true
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled, let self else { return }
+            self.saveNow(text)
+        }
+    }
+
+    func saveNow(_ text: String? = nil) {
+        let text = text ?? editor.text
+        do {
+            try text.data(using: .utf8)?.write(to: fileURL, options: .atomic)
+            isDirty = false
+        } catch {
+            Diag.log("save failed: \(error)")
+        }
+    }
+
     // MARK: Navigation
 
     func selectSlide(_ index: Int, focusEditor: Bool = false, caret: Caret = .start) {
         guard deck.slides.indices.contains(index) else { return }
-        // Already here with the caret inside this slide and no focus demanded:
-        // nothing to do. This is what stops the sidebar-selection / caret-tracking
-        // ping-pong from ever forming a loop.
         if index == activeSlide, !focusEditor, deck.slideIndex(atOffset: editor.caretOffset) == index {
             return
         }

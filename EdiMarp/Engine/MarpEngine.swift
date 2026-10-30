@@ -26,17 +26,28 @@ enum EngineError: LocalizedError {
 final class MarpEngine: NSObject, WKNavigationDelegate {
     static let shared = MarpEngine()
 
+    /// Posted when the engine bundle is reloaded (dev live reload) so open
+    /// sessions can re-render against the new engine.
+    static let didReloadNotification = Notification.Name("MarpEngineDidReload")
+
     private let webView: WKWebView
     private var ready = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
+    private let engineURL: URL?
+    private var watch: DispatchSourceFileSystemObject?
 
     private override init() {
         webView = WKWebView(frame: .zero, configuration: WebKitShared.configuration())
+        engineURL = Bundle.main.url(forResource: "engine", withExtension: "html")
         super.init()
         webView.navigationDelegate = self
-        if let url = Bundle.main.url(forResource: "engine", withExtension: "html") {
-            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        }
+        load()
+        startWatchingIfDev()
+    }
+
+    private func load() {
+        guard let engineURL else { return }
+        webView.loadFileURL(engineURL, allowingReadAccessTo: engineURL.deletingLastPathComponent())
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -56,7 +67,7 @@ final class MarpEngine: NSObject, WKNavigationDelegate {
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         NSLog("EdiMarp engine: web content process terminated; reloading")
         ready = false
-        webView.reload()
+        load()
     }
 
     private func waitUntilReady() async {
@@ -64,10 +75,52 @@ final class MarpEngine: NSObject, WKNavigationDelegate {
         await withCheckedContinuation { waiters.append($0) }
     }
 
-    func render(_ source: String) async throws -> RenderResult {
+    // MARK: Live reload
+
+    /// Reloads the engine bundle and notifies observers to re-render.
+    func reload() {
+        ready = false
+        load()
+        NotificationCenter.default.post(name: MarpEngine.didReloadNotification, object: nil)
+    }
+
+    private func startWatchingIfDev() {
+        #if DEBUG
+        guard let engineURL else { return }
+        let jsURL = engineURL.deletingLastPathComponent().appendingPathComponent("engine.js")
+        let fd = open(jsURL.path, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: [.write, .rename, .delete, .extend], queue: .main)
+        source.setEventHandler { [weak self] in
+            // Vite rewrites the file; re-arm by reloading after a short settle.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                self?.reload()
+                self?.rearmWatch()
+            }
+        }
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        watch = source
+        NSLog("EdiMarp engine: watching %@ for live reload", jsURL.path)
+        #endif
+    }
+
+    private func rearmWatch() {
+        #if DEBUG
+        // A rename/replace invalidates the fd, so re-establish the watch.
+        watch?.cancel()
+        watch = nil
+        startWatchingIfDev()
+        #endif
+    }
+
+    // MARK: Calls
+
+    func render(_ source: String, extraThemes: [String] = []) async throws -> RenderResult {
         await waitUntilReady()
         let value = try await webView.callAsyncJavaScript(
-            "return EdiEngine.render(source)", arguments: ["source": source], contentWorld: .page)
+            "return EdiEngine.render(source, extraThemes)",
+            arguments: ["source": source, "extraThemes": extraThemes], contentWorld: .page)
         guard let dict = value as? [String: Any],
               let slides = dict["slides"] as? [String],
               let css = dict["css"] as? String else { throw EngineError.badResponse }
@@ -77,17 +130,19 @@ final class MarpEngine: NSObject, WKNavigationDelegate {
         return RenderResult(slides: slides, css: css, notes: notes, aspect: aspect, theme: theme)
     }
 
-    func exportHTML(_ source: String, title: String) async throws -> String {
+    func exportHTML(_ source: String, title: String, extraThemes: [String] = []) async throws -> String {
         await waitUntilReady()
         let value = try await webView.callAsyncJavaScript(
-            "return EdiEngine.exportHtml(source, title)", arguments: ["source": source, "title": title], contentWorld: .page)
+            "return EdiEngine.exportHtml(source, title, extraThemes)",
+            arguments: ["source": source, "title": title, "extraThemes": extraThemes], contentWorld: .page)
         guard let html = value as? String else { throw EngineError.badResponse }
         return html
     }
 
-    func themes() async throws -> [String] {
+    func themes(extraThemes: [String] = []) async throws -> [String] {
         await waitUntilReady()
-        let value = try await webView.callAsyncJavaScript("return EdiEngine.themes()", arguments: [:], contentWorld: .page)
+        let value = try await webView.callAsyncJavaScript(
+            "return EdiEngine.themes(extraThemes)", arguments: ["extraThemes": extraThemes], contentWorld: .page)
         return (value as? [String]) ?? []
     }
 }

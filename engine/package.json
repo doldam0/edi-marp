@@ -6,6 +6,7 @@
   "description": "Marp rendering engine bundled as a single IIFE for the EdiMarp macOS app's WKWebView",
   "scripts": {
     "build": "vite build",
+    "watch": "vite build --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

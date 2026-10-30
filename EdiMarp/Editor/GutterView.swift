@@ -7,6 +7,9 @@ final class GutterView: NSRulerView {
     weak var textView: NSTextView?
     var deck: Deck? { didSet { needsDisplay = true } }
     var activeSlide: Int = 0 { didSet { needsDisplay = true } }
+    /// When false (CSS / plain files) the ruler shows line numbers only, with
+    /// no slide badges and no markdown parsing.
+    var marpMode = true { didSet { needsDisplay = true } }
 
     private let numberFont = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .regular)
     private let badgeFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
@@ -29,10 +32,20 @@ final class GutterView: NSRulerView {
         NSRect(x: bounds.maxX - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
 
         guard let textView, let layout = textView.textLayoutManager, let content = layout.textContentManager else { return }
-        let deck = deck ?? Deck(parsing: textView.string)
+        // Only markdown decks carry slide structure; other files parse their own
+        // line map cheaply (no slides) so numbering still works.
+        let deck = marpMode ? (deck ?? Deck(parsing: textView.string)) : Deck(parsing: "")
         var badges: [Int: Int] = [:]
-        for slide in deck.slides {
-            badges[slide.index == 0 ? slide.lineRange.lowerBound : slide.lineRange.lowerBound - 1] = slide.index + 1
+        if marpMode {
+            for slide in deck.slides {
+                badges[slide.index == 0 ? slide.lineRange.lowerBound : slide.lineRange.lowerBound - 1] = slide.index + 1
+            }
+        }
+        let lineOf: (Int) -> Int = marpMode ? { deck.lineIndex(atOffset: $0) } : { offset in
+            let s = textView.string as NSString
+            var line = 0, i = 0
+            while i < offset, i < s.length { if s.character(at: i) == 10 { line += 1 }; i += 1 }
+            return line
         }
 
         let inset = textView.textContainerInset
@@ -51,8 +64,8 @@ final class GutterView: NSRulerView {
             let y = self.convert(NSPoint(x: 0, y: yInText), from: textView).y
             let lineHeight = fragment.textLineFragments.first?.typographicBounds.height ?? frame.height
             let offset = content.offset(from: layout.documentRange.location, to: fragment.rangeInElement.location)
-            let line = deck.lineIndex(atOffset: offset)
-            let isActive = deck.slideIndex(atLine: line) == self.activeSlide
+            let line = lineOf(offset)
+            let isActive = self.marpMode && deck.slideIndex(atLine: line) == self.activeSlide
 
             if let badge = badges[line] {
                 let label = NSAttributedString(string: "\(badge)", attributes: [.font: self.badgeFont, .foregroundColor: NSColor.white])

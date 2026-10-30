@@ -35,7 +35,10 @@ final class SlideHostView: WKWebView, WKScriptMessageHandler, WKNavigationDelega
     var onDoubleClick: (() -> Void)?
     /// When true the view ignores the mouse so the SwiftUI row behind it gets clicks.
     var passthrough = false
+    /// Workspace folder used to serve relative image paths via `ediasset://`.
+    var assetRoot: URL?
 
+    private let assetHandler = AssetSchemeHandler()
     private var ready = false
     private var pending: (css: String, svg: String, interactive: Bool)?
     private var last: (css: String, svg: String, interactive: Bool)?
@@ -43,7 +46,9 @@ final class SlideHostView: WKWebView, WKScriptMessageHandler, WKNavigationDelega
 
     init() {
         let config = WebKitShared.configuration()
+        config.setURLSchemeHandler(assetHandler, forURLScheme: AssetSchemeHandler.scheme)
         super.init(frame: .zero, configuration: config)
+        assetHandler.host = self
         config.userContentController.add(WeakScriptHandler(self), name: "edi")
         navigationDelegate = self
         allowsMagnification = false
@@ -58,6 +63,16 @@ final class SlideHostView: WKWebView, WKScriptMessageHandler, WKNavigationDelega
 
     override func hitTest(_ point: NSPoint) -> NSView? {
         passthrough ? nil : super.hitTest(point)
+    }
+
+    /// Rewrites relative image paths to the asset scheme when a workspace root
+    /// is set, so the slide can show images stored beside the deck.
+    private func prepared(_ svg: String) -> String {
+        assetRoot != nil ? AssetRewriter.toScheme(svg) : svg
+    }
+
+    func update(css: String, rawSVG: String, interactive: Bool) {
+        update(css: css, svg: prepared(rawSVG), interactive: interactive)
     }
 
     func update(css: String, svg: String, interactive: Bool) {
@@ -76,8 +91,9 @@ final class SlideHostView: WKWebView, WKScriptMessageHandler, WKNavigationDelega
     }
 
     /// Sets the slide and returns once fonts and layout have settled (PDF capture).
-    func updateAndWait(css: String, svg: String) async throws {
+    func updateAndWait(css: String, svg rawSVG: String) async throws {
         await waitUntilReady()
+        let svg = prepared(rawSVG)
         last = (css, svg, false)
         _ = try await callAsyncJavaScript("return window.edi.update(css, svg, false)",
                                           arguments: ["css": css, "svg": svg], contentWorld: .page)

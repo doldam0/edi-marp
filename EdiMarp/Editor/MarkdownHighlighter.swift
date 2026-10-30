@@ -2,7 +2,7 @@ import AppKit
 
 /// Lightweight regex highlighting for Marp markdown. Runs over the whole
 /// storage (decks are small) inside `didProcessEditing`, attributes only.
-final class MarkdownHighlighter {
+final class MarkdownHighlighter: SyntaxHighlighter {
     private struct Rule {
         let regex: NSRegularExpression
         let group: Int

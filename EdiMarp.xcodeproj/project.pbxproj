@@ -9,31 +9,37 @@
 /* Begin PBXBuildFile section */
 		068FC2F4093D7025D34A29F2 /* DeckToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE01538F7378ED7A42114D1 /* DeckToolbar.swift */; };
 		14B7D74BDF304795DA69FA1F /* ThemeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECEAE504C2BB803A08D27BE /* ThemeCatalog.swift */; };
+		22923E1B8E59F9A81F10F8CB /* EditorPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = C12AEF241F4F20F5DB1009C2 /* EditorPane.swift */; };
 		22FF161D5AF4184129698A55 /* Diag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42979AE37B832BA099BA4C97 /* Diag.swift */; };
 		233A3AE2B30970DFB2532507 /* Snippets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2260726D96F1B119807E8C27 /* Snippets.swift */; };
+		25CF472D9A627CC41AC022C4 /* AssetSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2886D7629B637FDCFE1AA99E /* AssetSchemeHandler.swift */; };
 		270A1A3D31403E3DF8432AA0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1CD51AA9A04E56A76A3D183 /* AppDelegate.swift */; };
 		29254B0CC97BC6B99A6BCCDC /* EditorController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D04708AE2E09ACCBB2C161 /* EditorController.swift */; };
+		2BE7E4F28445F9B33EE1DAFB /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62B300810344D00BFC5E2993 /* Workspace.swift */; };
 		2E8E774D8A9A0670C331FB50 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865D9083FA59ECB1059B9919 /* Preferences.swift */; };
 		3074030B180E045ADBAE17E3 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 415EF2B570C708370BC020C5 /* EditorView.swift */; };
-		3F162974852763890DA7CDA5 /* DeckDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = C596FF1955F774E56FDA88B3 /* DeckDocument.swift */; };
 		41A1010C89FEF39DD1453D3F /* MarkdownHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC20842DD5BF7F1152C31046 /* MarkdownHighlighter.swift */; };
 		4DD771CC951D7C69821208F7 /* DebugScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 502EDCC42ED146FB878C4446 /* DebugScript.swift */; };
 		4FFB024EEF18755AD4452358 /* PresenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084BCCB3745C9A090F285E30 /* PresenterView.swift */; };
 		54D180347E0B7B3D5C13B852 /* StatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E7344501AB120465E9A5016 /* StatusBar.swift */; };
+		6ACFCAA8F42FAD935A59B6A5 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BA986E8FC24CAF927E51D4 /* FileNode.swift */; };
 		6BE7F1A895B0EA31884E8A80 /* WebKitShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78EC572608EF17AB8167C63 /* WebKitShared.swift */; };
 		6FCD7C0CB2A096A45705C243 /* Exporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2120132590E883FD0995D502 /* Exporter.swift */; };
+		72FFFBD4EA651DA218EA8451 /* CSSHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282AFD76D777713B27C56F36 /* CSSHighlighter.swift */; };
 		7300F3A56C202BF90BC7FF21 /* DeckSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D61391D4EE469E34A36F38 /* DeckSession.swift */; };
 		791F26F832AEF3F316343E24 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8653B349601FC173A567D886 /* SettingsView.swift */; };
 		7C2BA4C7CBB1786D8708558C /* SlideWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480332D8F6F92CCC1615A2F0 /* SlideWebView.swift */; };
 		8F0FF801870EAC6C0AF04012 /* DeckWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87DFAB47CB60526CCBBBA593 /* DeckWindow.swift */; };
 		901B4EA5C291CFB53D09864A /* GutterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD8989B9889C0A9F2BB2AC7 /* GutterView.swift */; };
 		9CFECC14308F505E04A404EB /* SlideSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1046D99209666CC209DE0473 /* SlideSidebar.swift */; };
+		A78BC6C7FAD8A029AA055B6E /* FileExplorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015A6B3E8A478062469255C2 /* FileExplorer.swift */; };
 		B1A017E58EF167D50E34B7C2 /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9638054B6A20C4FF18F9AC44 /* InspectorView.swift */; };
 		B82F68504B6885CA69514F76 /* EdiCore in Frameworks */ = {isa = PBXBuildFile; productRef = 063A91CC419F9DB3EA14BC99 /* EdiCore */; };
 		B9F4C25CEC931B2285EA6C7E /* EdiMarpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1610976F9E613083B2FA465 /* EdiMarpApp.swift */; };
 		C61D535F6110F2CC58CA1B52 /* engine.js in Resources */ = {isa = PBXBuildFile; fileRef = 2C5041599A1CD139DFEAA8AE /* engine.js */; };
 		CB0727832201A6F18717EF09 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8C14A960C209193B7AD7D7BC /* Assets.xcassets */; };
 		D4272E9F22AF4040DDAD1F05 /* Welcome.md in Resources */ = {isa = PBXBuildFile; fileRef = 3C51385AEEEE3B93275D5E53 /* Welcome.md */; };
+		D89366F498438B751F54F9BE /* WorkspaceRef.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C72CD09B12E9D7CC74DDAAF /* WorkspaceRef.swift */; };
 		DBBFA45843B967AB91CC2337 /* DeckCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E10BD68E83EDF9F926BF042 /* DeckCommands.swift */; };
 		E3A7058BD40D64CB882A5068 /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A2FCD7B293190784A74D093 /* PreviewView.swift */; };
 		FAE5E9D6DED18D1C627D2BB4 /* MarpEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34271BBF620BA92638C715DC /* MarpEngine.swift */; };
@@ -42,6 +48,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		015A6B3E8A478062469255C2 /* FileExplorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileExplorer.swift; sourceTree = "<group>"; };
 		06D61391D4EE469E34A36F38 /* DeckSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckSession.swift; sourceTree = "<group>"; };
 		084BCCB3745C9A090F285E30 /* PresenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresenterView.swift; sourceTree = "<group>"; };
 		1046D99209666CC209DE0473 /* SlideSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideSidebar.swift; sourceTree = "<group>"; };
@@ -49,6 +56,8 @@
 		2120132590E883FD0995D502 /* Exporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exporter.swift; sourceTree = "<group>"; };
 		2260726D96F1B119807E8C27 /* Snippets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snippets.swift; sourceTree = "<group>"; };
 		27DAA3327A81650FB4B8A1A5 /* EdiCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = EdiCore; path = Packages/EdiCore; sourceTree = SOURCE_ROOT; };
+		282AFD76D777713B27C56F36 /* CSSHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CSSHighlighter.swift; sourceTree = "<group>"; };
+		2886D7629B637FDCFE1AA99E /* AssetSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetSchemeHandler.swift; sourceTree = "<group>"; };
 		2BD8989B9889C0A9F2BB2AC7 /* GutterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GutterView.swift; sourceTree = "<group>"; };
 		2C5041599A1CD139DFEAA8AE /* engine.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = engine.js; sourceTree = "<group>"; };
 		34271BBF620BA92638C715DC /* MarpEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarpEngine.swift; sourceTree = "<group>"; };
@@ -58,6 +67,9 @@
 		42979AE37B832BA099BA4C97 /* Diag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diag.swift; sourceTree = "<group>"; };
 		480332D8F6F92CCC1615A2F0 /* SlideWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlideWebView.swift; sourceTree = "<group>"; };
 		502EDCC42ED146FB878C4446 /* DebugScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugScript.swift; sourceTree = "<group>"; };
+		62B300810344D00BFC5E2993 /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
+		6C72CD09B12E9D7CC74DDAAF /* WorkspaceRef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRef.swift; sourceTree = "<group>"; };
+		71BA986E8FC24CAF927E51D4 /* FileNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNode.swift; sourceTree = "<group>"; };
 		7A2FCD7B293190784A74D093 /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 		8653B349601FC173A567D886 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		865D9083FA59ECB1059B9919 /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
@@ -71,8 +83,8 @@
 		B3FB4A1809D72E5BD5978E6F /* EdiMarp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdiMarp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAE01538F7378ED7A42114D1 /* DeckToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckToolbar.swift; sourceTree = "<group>"; };
 		BFBC6C0D1C71BD0374EB5953 /* engine.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = engine.html; sourceTree = "<group>"; };
+		C12AEF241F4F20F5DB1009C2 /* EditorPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPane.swift; sourceTree = "<group>"; };
 		C3FE8CD810F810BC2B2A4A50 /* slide.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = slide.html; sourceTree = "<group>"; };
-		C596FF1955F774E56FDA88B3 /* DeckDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckDocument.swift; sourceTree = "<group>"; };
 		D3ACA80C802A0CDD5139BA40 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D78EC572608EF17AB8167C63 /* WebKitShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebKitShared.swift; sourceTree = "<group>"; };
 		DC20842DD5BF7F1152C31046 /* MarkdownHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighter.swift; sourceTree = "<group>"; };
@@ -103,6 +115,7 @@
 				55F9A9B32ED9D35B47A5559E /* Export */,
 				A87A2119DE8D254E908B635F /* Resources */,
 				7AB9AFEC4A45915D89D8FFCF /* Views */,
+				521EDEFADA3E316E15776240 /* Workspace */,
 			);
 			path = EdiMarp;
 			sourceTree = "<group>";
@@ -129,10 +142,20 @@
 		25029829DB9C6AFB4D1D5089 /* Document */ = {
 			isa = PBXGroup;
 			children = (
-				C596FF1955F774E56FDA88B3 /* DeckDocument.swift */,
 				06D61391D4EE469E34A36F38 /* DeckSession.swift */,
 			);
 			path = Document;
+			sourceTree = "<group>";
+		};
+		521EDEFADA3E316E15776240 /* Workspace */ = {
+			isa = PBXGroup;
+			children = (
+				2886D7629B637FDCFE1AA99E /* AssetSchemeHandler.swift */,
+				71BA986E8FC24CAF927E51D4 /* FileNode.swift */,
+				62B300810344D00BFC5E2993 /* Workspace.swift */,
+				6C72CD09B12E9D7CC74DDAAF /* WorkspaceRef.swift */,
+			);
+			path = Workspace;
 			sourceTree = "<group>";
 		};
 		55F9A9B32ED9D35B47A5559E /* Export */ = {
@@ -146,6 +169,7 @@
 		722B6CEFCB2360E6BFDA15CF /* Editor */ = {
 			isa = PBXGroup;
 			children = (
+				282AFD76D777713B27C56F36 /* CSSHighlighter.swift */,
 				B1D04708AE2E09ACCBB2C161 /* EditorController.swift */,
 				415EF2B570C708370BC020C5 /* EditorView.swift */,
 				2BD8989B9889C0A9F2BB2AC7 /* GutterView.swift */,
@@ -159,6 +183,8 @@
 			children = (
 				BAE01538F7378ED7A42114D1 /* DeckToolbar.swift */,
 				87DFAB47CB60526CCBBBA593 /* DeckWindow.swift */,
+				C12AEF241F4F20F5DB1009C2 /* EditorPane.swift */,
+				015A6B3E8A478062469255C2 /* FileExplorer.swift */,
 				9638054B6A20C4FF18F9AC44 /* InspectorView.swift */,
 				084BCCB3745C9A090F285E30 /* PresenterView.swift */,
 				7A2FCD7B293190784A74D093 /* PreviewView.swift */,
@@ -308,17 +334,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				270A1A3D31403E3DF8432AA0 /* AppDelegate.swift in Sources */,
+				25CF472D9A627CC41AC022C4 /* AssetSchemeHandler.swift in Sources */,
+				72FFFBD4EA651DA218EA8451 /* CSSHighlighter.swift in Sources */,
 				4DD771CC951D7C69821208F7 /* DebugScript.swift in Sources */,
 				DBBFA45843B967AB91CC2337 /* DeckCommands.swift in Sources */,
-				3F162974852763890DA7CDA5 /* DeckDocument.swift in Sources */,
 				7300F3A56C202BF90BC7FF21 /* DeckSession.swift in Sources */,
 				068FC2F4093D7025D34A29F2 /* DeckToolbar.swift in Sources */,
 				8F0FF801870EAC6C0AF04012 /* DeckWindow.swift in Sources */,
 				22FF161D5AF4184129698A55 /* Diag.swift in Sources */,
 				B9F4C25CEC931B2285EA6C7E /* EdiMarpApp.swift in Sources */,
 				29254B0CC97BC6B99A6BCCDC /* EditorController.swift in Sources */,
+				22923E1B8E59F9A81F10F8CB /* EditorPane.swift in Sources */,
 				3074030B180E045ADBAE17E3 /* EditorView.swift in Sources */,
 				6FCD7C0CB2A096A45705C243 /* Exporter.swift in Sources */,
+				A78BC6C7FAD8A029AA055B6E /* FileExplorer.swift in Sources */,
+				6ACFCAA8F42FAD935A59B6A5 /* FileNode.swift in Sources */,
 				901B4EA5C291CFB53D09864A /* GutterView.swift in Sources */,
 				B1A017E58EF167D50E34B7C2 /* InspectorView.swift in Sources */,
 				41A1010C89FEF39DD1453D3F /* MarkdownHighlighter.swift in Sources */,
@@ -333,6 +363,8 @@
 				54D180347E0B7B3D5C13B852 /* StatusBar.swift in Sources */,
 				14B7D74BDF304795DA69FA1F /* ThemeCatalog.swift in Sources */,
 				6BE7F1A895B0EA31884E8A80 /* WebKitShared.swift in Sources */,
+				2BE7E4F28445F9B33EE1DAFB /* Workspace.swift in Sources */,
+				D89366F498438B751F54F9BE /* WorkspaceRef.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

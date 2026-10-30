@@ -9,10 +9,13 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
     let textView: NSTextView
     let gutter: GutterView
 
+    enum Language { case markdown, css, plain }
+
     var onTextChange: ((String) -> Void)?
     var onSelectionChange: ((Int) -> Void)?
-    /// The document's undo manager, injected from SwiftUI's environment.
-    var externalUndoManager: UndoManager?
+    /// A private undo stack per editor, so each open file undoes on its own.
+    let ownUndoManager = UndoManager()
+    let language: Language
 
     var deck: Deck? {
         didSet { gutter.deck = deck }
@@ -30,21 +33,27 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         didSet { scrollView.rulersVisible = showGutter }
     }
 
-    private let highlighter: MarkdownHighlighter
+    private let highlighter: SyntaxHighlighter
     private var highlighting = false
     private var boundsObserver: NSObjectProtocol?
 
-    init(text: String) {
+    init(text: String, language: Language = .markdown) {
+        self.language = language
         let defaults = UserDefaults.standard
         fontSize = CGFloat(defaults.double(forKey: Pref.editorFontSize)).clamped(10, 28)
         showGutter = defaults.bool(forKey: Pref.showGutter)
         let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        highlighter = MarkdownHighlighter(font: font)
+        switch language {
+        case .markdown: highlighter = MarkdownHighlighter(font: font)
+        case .css: highlighter = CSSHighlighter(font: font)
+        case .plain: highlighter = PlainHighlighter(font: font)
+        }
 
         scrollView = NSTextView.scrollableTextView()
         textView = scrollView.documentView as! NSTextView
         gutter = GutterView(textView: textView, scrollView: scrollView)
         super.init()
+        gutter.marpMode = (language == .markdown)
 
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
@@ -159,7 +168,7 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
     }
 
     /// The undo manager that actually receives this editor's edits.
-    var effectiveUndoManager: UndoManager? { externalUndoManager ?? textView.undoManager }
+    var effectiveUndoManager: UndoManager? { ownUndoManager }
 
     func focus() {
         textView.window?.makeFirstResponder(textView)
@@ -171,9 +180,7 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         onSelectionChange?(caretOffset)
     }
 
-    func undoManager(for view: NSTextView) -> UndoManager? {
-        externalUndoManager ?? view.window?.undoManager
-    }
+    func undoManager(for view: NSTextView) -> UndoManager? { ownUndoManager }
 
     // MARK: NSTextStorageDelegate
 

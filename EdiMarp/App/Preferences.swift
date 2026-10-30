@@ -8,6 +8,7 @@ enum Pref {
     static let layout = "layout"
     static let previewMode = "previewMode"
     static let inspector = "inspectorShown"
+    static let sidebarMode = "sidebarMode"
     static let didShowWelcome = "didShowWelcome"
 
     static func register() {
@@ -18,6 +19,7 @@ enum Pref {
             layout: "split",
             previewMode: "focus",
             inspector: false,
+            sidebarMode: "slides",
         ])
     }
 }
