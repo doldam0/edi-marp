@@ -2,3 +2,9 @@ node_modules
 dist
 .DS_Store
 *.tsbuildinfo
+xcuserdata/
+DerivedData/
+build/
+*.xcworkspace/xcuserdata
+.build/
+.swiftpm/

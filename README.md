@@ -1,54 +1,119 @@
 # edi · marp
 
-브라우저에서 돌아가는 [Marp](https://marp.app) 슬라이드 에디터.
-마크다운이 유일한 진실이고, 나머지는 전부 그 위의 뷰다.
+A native macOS editor for [Marp](https://marp.app) markdown slide decks, built with
+SwiftUI. Write markdown on the left, watch the deck render on the right, and drive
+everything with native sidebars, inspectors, menus, and keyboard shortcuts.
+
+The guiding idea: **the markdown is the single source of truth.** Every GUI action —
+toggling a directive, switching themes, reordering slides — is a pure
+`(Deck) -> [Edit]` transform applied to the text through one undo stack. There is no
+hidden slide model to drift out of sync, and ⌘Z reverses any action, GUI or typed.
+
+## Running it
+
+Requires macOS 26+ and Xcode 26+.
 
 ```bash
-npm install
-npm run dev      # http://localhost:5173
-npm test         # core 단위 테스트
-npm run build    # dist/
+# 1. Build the Marp engine bundle (once, or after changing engine/)
+cd engine && npm install && npm run build && cd ..
+
+# 2. Generate the Xcode project (needs xcodegen: `brew install xcodegen`)
+xcodegen generate
+
+# 3. Open and run
+open EdiMarp.xcodeproj
 ```
 
-## 쓰는 법
+Or build and launch from the command line:
 
-| 단축키 | 동작 |
+```bash
+xcodebuild -project EdiMarp.xcodeproj -scheme EdiMarp -configuration Debug \
+  -derivedDataPath build/DerivedData build
+open build/DerivedData/Build/Products/Debug/EdiMarp.app
+```
+
+## Architecture
+
+```
+Packages/EdiCore/       Pure Swift: the parser and the transforms. No UI, fully tested.
+  Deck.swift            Parses markdown into slides, directives, line/offset maps.
+  Transforms.swift      (Deck, …) -> [Edit] : insert/move/duplicate/delete slides,
+                        set global & per-slide directives, toggle classes.
+  Edit.swift            A UTF-16 text replacement; [Edit].apply(to:) for tests.
+
+engine/                 TypeScript: @marp-team/marp-core bundled to one IIFE that
+                        runs inside a hidden WKWebView. Renders a deck to inline-SVG
+                        slides and exports a standalone HTML deck. No network access.
+
+EdiMarp/                The SwiftUI app.
+  Document/             DeckDocument (ReferenceFileDocument) + DeckSession, the
+                        per-window state that turns transforms into undoable edits.
+  Editor/               NSTextView wrapper: markdown syntax highlighting, a gutter
+                        that numbers lines and badges slide boundaries.
+  Engine/               MarpEngine (the hidden render WebView) and SlideHostView
+                        (one slide in its own transparent WebView).
+  Views/                NavigationSplitView shell, slide sidebar, focus/grid preview,
+                        inspector, presenter, status bar, toolbar.
+  Export/               Standalone HTML, vector PDF (one slide per page), print.
+```
+
+Three things worth calling out:
+
+- **The markdown is the only state.** `DeckSession.apply` runs a transform and feeds the
+  resulting edits to the text view, so a click in the inspector and a keystroke land on
+  the same undo stack. Text changes are observed through the text storage, so typing,
+  programmatic edits, and undo/redo all reparse and re-render through one path.
+- **Cursor and slide stay in sync, both ways.** The slide under the cursor is always the
+  one shown; clicking a block in the preview jumps the editor to its source line. A
+  markdown-it plugin stamps each block with its line number for the round trip.
+- **Rendering is isolated.** Marp runs as JavaScript in a hidden WebView, so a parse error
+  never takes down the UI, and each slide is drawn in its own Shadow-DOM-like WebView on a
+  transparent background that the native layout letterboxes.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
 | --- | --- |
-| `⌘ K` | 커맨드 팔레트 — 모든 기능이 여기 있다 |
-| `⌘ ⏎` | 현재 슬라이드 아래에 새 슬라이드 |
-| `⌘ ⇧ D` / `⌘ ⇧ ⌫` | 슬라이드 복제 / 삭제 |
-| `⌘ ⇧ ↑` / `↓` | 슬라이드 순서 이동 |
-| `⌘ 1` `⌘ 2` `⌘ 3` | 레일 / 에디터 / 미리보기 토글 |
-| `⌘ G` | 미리보기 포커스 ↔ 그리드 |
-| `⌘ ⇧ P` | 발표 모드 (`N` 발표자 노트, `Esc` 종료) |
-| `⌘ O` / `⌘ S` / `⌘ ⇧ S` | 열기 / 저장 / 다른 이름으로 |
-| `⌘ ⇧ E` | 단독 실행 HTML 내보내기 |
+| `⌘ ⏎` | New slide below |
+| `⌘ ⇧ D` | Duplicate slide |
+| `⌘ ⇧ ⌫` | Delete slide |
+| `⌘ ⇧ ↑ / ↓` | Move slide up / down |
+| `⌥ ⌘ ↑ / ↓` | Previous / next slide |
+| `⌘ ⇧ L` / `⌘ ⇧ I` | Toggle `lead` / `invert` class |
+| `⌘ 1 / 2 / 3` | Editor · Split · Preview layout |
+| `⌥ ⌘ G` | Toggle slide grid |
+| `⌥ ⌘ I` | Toggle inspector |
+| `⌥ ⌘ P` | Start presenting |
+| `⌘ S` · `⌘ ⇧ E` · `⌘ P` | Save · Export HTML · Print |
 
-- 커서가 있는 슬라이드가 항상 미리보기에 보인다. 미리보기 요소를 클릭하면 그 줄로 에디터가 점프한다.
-- 미리보기 아래 인스펙터의 칩(`lead`, `invert`, 번호, 배경, 글자)은 해당 슬라이드에 `<!-- _key: value -->` 주석을 쓰거나 지운다.
-- 레일에서 썸네일을 드래그하면 슬라이드 순서가 바뀐다.
-- 초안은 브라우저에 자동 저장된다. 파일 저장은 File System Access API를 쓰고, 지원하지 않는 브라우저에서는 다운로드로 대체한다.
-- 테마: Marp 기본 `default` · `gaia` · `uncommon` 에 더해 이 에디터만의 `paper`, `noir`.
+In the presenter window: arrows / space / `j` `k` `h` `l` to move, `N` for speaker
+notes with a next-slide preview, `Esc` to exit.
 
-## 구조
+## Themes
 
-```
-src/
-  core/        순수 모듈. DOM도 React도 모른다.
-    document.ts    마크다운 → 슬라이드 범위 / 디렉티브 / 제목
-    transforms.ts  모든 구조 변경은 (doc) => Edit[] 순수 함수
-    edits.ts       Edit[] 를 문자열에 적용 (테스트/헤드리스용)
-    export.ts      단독 HTML, 인쇄→PDF
-    storage.ts     초안 자동 저장, 파일 열기/저장
-  render/      Marp 렌더링. Web Worker 우선, 메인 스레드 폴백, 최신 요청만 처리
-  editor/      CodeMirror 6 설정 + 에디터 브리지 (Edit[] 를 트랜잭션으로 디스패치)
-  state/       zustand 스토어, 커맨드 레지스트리 (팔레트·툴바·단축키가 공유)
-  ui/          React 컴포넌트. 슬라이드는 Shadow DOM 안에서 렌더되어 앱 CSS와 격리
-  themes/      커스텀 Marp 테마 CSS
+Marp's `default`, `gaia`, and `uncover`, plus two that ship with the app: **paper** (a
+serif editorial look) and **noir** (black with a lime accent). Their CSS lives in
+`engine/src/themes/`.
+
+## Tests
+
+```bash
+cd Packages/EdiCore && swift test     # parser + transforms
 ```
 
-핵심 아이디어 세 가지.
+The app also has an opt-in scripted smoke test that drives a real window through every
+slide operation, undo, theme switch, and layout change:
+`EDIMARP_DEBUG=/tmp/diag.log EDIMARP_DEBUG_SCRIPT=1 open -n EdiMarp.app`.
 
-1. **텍스트가 진실.** GUI는 상태를 따로 갖지 않는다. 인스펙터 토글, 테마 변경, 슬라이드 이동은 전부 `core/transforms.ts` 의 순수 함수가 돌려주는 `Edit[]` 로 환원되고, 브리지가 그것을 CodeMirror 트랜잭션으로 보낸다. 그래서 되돌리기(⌘Z)가 모든 조작에 자연스럽게 통한다.
-2. **소스 라인 매핑.** markdown-it 플러그인이 블록 요소에 `data-line` 을 찍는다. 미리보기 클릭 → 에디터 점프가 여기서 나온다.
-3. **격리된 렌더.** Marp 는 워커에서 돌고, 결과 SVG 는 Shadow DOM 에 들어간다. 모든 썸네일이 하나의 constructed stylesheet 를 공유하므로 슬라이드가 많아져도 CSS 파싱은 한 번이다.
+## Headless export
+
+```bash
+EDIMARP_EXPORT_INPUT=deck.md EDIMARP_EXPORT_OUTPUT=deck.pdf \
+  EdiMarp.app/Contents/MacOS/EdiMarp      # .pdf or .html
+```
+
+## Not included
+
+- PPTX / Keynote export (HTML and PDF only).
+- Image/asset embedding beyond what the markdown references by path.
+- Live reload of the engine bundle; rebuild `engine/` after changing it.

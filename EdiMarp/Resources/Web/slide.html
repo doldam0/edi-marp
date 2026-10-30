@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style id="theme"></style>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  body { -webkit-user-select: none; user-select: none; cursor: default; }
+  #host { position: absolute; inset: 0; }
+  /* The viewBox + xMidYMid meet lets WebKit do the letterboxing. */
+  #host > svg { display: block; width: 100%; height: 100%; }
+  body.interactive [data-line] { cursor: pointer; }
+  body.interactive [data-line]:hover { outline: 2px solid rgba(10, 132, 255, .55); outline-offset: 3px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="host" class="marpit"></div>
+<script>
+(() => {
+  const theme = document.getElementById('theme');
+  const host = document.getElementById('host');
+  let lastCSS = null;
+  window.edi = {
+    update(css, svg, interactive) {
+      if (css !== lastCSS) { theme.textContent = css; lastCSS = css; }
+      host.innerHTML = svg;
+      document.body.classList.toggle('interactive', !!interactive);
+      // resolves once fonts have settled; used by the PDF renderer
+      return (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => new Promise((r) => setTimeout(r, 40)));
+    },
+    clear() { host.innerHTML = ''; },
+  };
+  const post = (msg) => window.webkit?.messageHandlers?.edi?.postMessage(msg);
+  host.addEventListener('click', (e) => {
+    const el = e.target.closest?.('[data-line]');
+    if (el) post({ type: 'line', line: Number(el.getAttribute('data-line')) });
+    else post({ type: 'click' });
+  });
+  host.addEventListener('dblclick', () => post({ type: 'dblclick' }));
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  post({ type: 'ready' });
+})();
+</script>
+</body>
+</html>
