@@ -35,9 +35,15 @@ function sourceLines(md: any) {
   })
 }
 
-function createMarp(extraThemes: string[]): Marp {
+function createMarp(extraThemes: string[], inlineSVG: boolean): Marp {
   const marp = new Marp({
-    inlineSVG: true,
+    // Inline-SVG mode wraps each slide in an <svg><foreignObject>. That is what
+    // the standalone HTML/PDF export wants (it auto-letterboxes and prints as a
+    // vector), but WKWebView fails to *paint* centred flex content inside a
+    // <foreignObject> on screen — the section background shows and the text does
+    // not — so the live preview renders plain <section> HTML instead (see
+    // `render` vs `exportHtml`).
+    inlineSVG,
     html: true,
     math: 'katex',
     minifyCSS: false,
@@ -54,16 +60,16 @@ function createMarp(extraThemes: string[]): Marp {
   return marp
 }
 
-// One Marp per distinct set of workspace themes, so multiple windows with
-// different themes never clash. Keyed by the joined theme CSS.
+// One Marp per distinct (render mode, set of workspace themes), so multiple
+// windows with different themes never clash. Keyed by mode + the joined CSS.
 const marpCache = new Map<string, Marp>()
 
-function marpFor(extraThemes: string[]): Marp {
-  const key = extraThemes.join('\u0000')
+function marpFor(extraThemes: string[], inlineSVG: boolean): Marp {
+  const key = (inlineSVG ? '1' : '0') + '\u0000' + extraThemes.join('\u0000')
   let marp = marpCache.get(key)
   if (!marp) {
-    marp = createMarp(extraThemes)
-    if (marpCache.size > 8) marpCache.clear()
+    marp = createMarp(extraThemes, inlineSVG)
+    if (marpCache.size > 16) marpCache.clear()
     marpCache.set(key, marp)
   }
   return marp
@@ -74,16 +80,27 @@ function aspectOf(svg: string | undefined): number {
   return m ? Number(m[1]) / Number(m[2]) : 16 / 9
 }
 
+/** HTML mode has no SVG viewBox; the slide box lives on the `section` rule. */
+function aspectFromCSS(css: string): number {
+  const block = css.match(/>\s*section\s*\{([^}]*)\}/)
+  const body = block ? block[1] : ''
+  const w = Number(body.match(/\bwidth:\s*([\d.]+)px/)?.[1])
+  const h = Number(body.match(/\bheight:\s*([\d.]+)px/)?.[1])
+  return w && h ? w / h : 16 / 9
+}
+
 export function render(source: string, extraThemes: string[] = []): RenderResult {
-  const marp = marpFor(extraThemes)
+  // Live preview: plain <section> HTML (no inline SVG) so WKWebView paints it.
+  // The preview shell scales each section to fit its card.
+  const marp = marpFor(extraThemes, false)
   const { html, css, comments } = marp.render(source, { htmlAsArray: true })
   const slides = html as unknown as string[]
   const theme = marp.lastGlobalDirectives?.theme ?? 'default'
-  return { slides, css, notes: comments as string[][], aspect: aspectOf(slides[0]), theme }
+  return { slides, css, notes: comments as string[][], aspect: aspectFromCSS(css), theme }
 }
 
 export function themes(extraThemes: string[] = []): string[] {
-  return [...marpFor(extraThemes).themeSet.themes()].map((t) => t.name)
+  return [...marpFor(extraThemes, false).themeSet.themes()].map((t) => t.name)
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
@@ -93,7 +110,12 @@ const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
  * navigator. Opens anywhere, prints to PDF with one slide per page.
  */
 export function exportHtml(source: string, title: string, extraThemes: string[] = []): string {
-  const r = render(source, extraThemes)
+  // Export keeps inline SVG: it opens in a browser and prints to PDF, both of
+  // which render <foreignObject> correctly and letterbox the slides for free.
+  const marp = marpFor(extraThemes, true)
+  const { html, css } = marp.render(source, { htmlAsArray: true })
+  const slidesArr = html as unknown as string[]
+  const r = { slides: slidesArr, css, aspect: aspectOf(slidesArr[0]) }
   const slides = r.slides.map((s, i) => `<div class="slide" data-index="${i}">${s}</div>`).join('\n')
   const [w, h] = r.aspect >= 1 ? [1280, Math.round(1280 / r.aspect)] : [Math.round(720 * r.aspect), 720]
   return `<!doctype html>

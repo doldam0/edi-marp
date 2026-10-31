@@ -8,8 +8,11 @@
   html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
   body { -webkit-user-select: none; user-select: none; cursor: default; }
   #host { position: absolute; inset: 0; }
-  /* The viewBox + xMidYMid meet lets WebKit do the letterboxing. */
-  #host > svg { display: block; width: 100%; height: 100%; }
+  /* The slide is a 1280x720-ish <section>; scale it to fit the view.
+     (Marp's inline-SVG mode auto-scales via a viewBox, but WKWebView will not
+     paint centred flex content inside its <foreignObject>, so the preview uses
+     plain <section> HTML and scales it here instead.) */
+  #host > section { position: absolute; top: 0; left: 0; transform-origin: top left; }
   body.interactive [data-line] { cursor: pointer; }
   body.interactive [data-line]:hover { outline: 2px solid rgba(10, 132, 255, .55); outline-offset: 3px; border-radius: 3px; }
 </style>
@@ -21,16 +24,35 @@
   const theme = document.getElementById('theme');
   const host = document.getElementById('host');
   let lastCSS = null;
+  let slideW = 1280, slideH = 720;
+
+  const fit = () => {
+    const section = host.firstElementChild;
+    if (!section) return;
+    const scale = host.clientWidth / slideW;
+    section.style.transform = 'scale(' + scale + ')';
+  };
+  new ResizeObserver(fit).observe(host);
+
   window.edi = {
     update(css, svg, interactive) {
       if (css !== lastCSS) { theme.textContent = css; lastCSS = css; }
       host.innerHTML = svg;
+      const section = host.querySelector('section');
+      if (section) {
+        host.replaceChildren(section); // drop the trailing Marp browser <script>
+        const cs = getComputedStyle(section);
+        slideW = parseFloat(cs.width) || 1280;
+        slideH = parseFloat(cs.height) || 720;
+      }
       document.body.classList.toggle('interactive', !!interactive);
+      fit();
       // resolves once fonts have settled; used by the PDF renderer
       return (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => new Promise((r) => setTimeout(r, 40)));
     },
     clear() { host.innerHTML = ''; },
   };
+
   const post = (msg) => window.webkit?.messageHandlers?.edi?.postMessage(msg);
   host.addEventListener('click', (e) => {
     const el = e.target.closest?.('[data-line]');

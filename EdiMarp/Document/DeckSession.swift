@@ -31,6 +31,12 @@ final class DeckSession: ObservableObject {
 
     /// Workspace theme CSS passed to the engine; re-renders when it changes.
     var extraThemes: [String] { didSet { if extraThemes != oldValue { scheduleRender() } } }
+
+    /// `/* @theme name */` names declared by the workspace theme CSS, for the
+    /// theme pickers so a deck using a workspace theme shows a matching option.
+    var workspaceThemeNames: [String] {
+        extraThemes.compactMap { Workspace.themeName(in: $0) }
+    }
     /// Folder used to resolve relative image paths in the preview.
     var assetRoot: URL?
 

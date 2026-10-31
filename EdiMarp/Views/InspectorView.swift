@@ -40,8 +40,18 @@ struct InspectorView: View {
                     get: { session.deck.theme },
                     set: { session.setGlobalDirective("theme", $0) }
                 )) {
-                    ForEach(ThemeCatalog.all) { theme in
-                        Text(theme.label).tag(theme.name)
+                    Section("내장") {
+                        ForEach(ThemeCatalog.all) { theme in
+                            Text(theme.label).tag(theme.name)
+                        }
+                    }
+                    let workspaceThemes = session.workspaceThemeNames
+                    if !workspaceThemes.isEmpty {
+                        Section("워크스페이스") {
+                            ForEach(workspaceThemes, id: \.self) { name in
+                                Text(name).tag(name)
+                            }
+                        }
                     }
                 }
                 Picker("비율", selection: Binding(
@@ -59,9 +69,13 @@ struct InspectorView: View {
                 DirectiveTextRow(session: session, key: "footer", title: "바닥글")
             }
 
-            if let theme = ThemeCatalog.all.first(where: { $0.name == session.deck.theme }) {
-                Section {
+            Section {
+                if let theme = ThemeCatalog.all.first(where: { $0.name == session.deck.theme }) {
                     Text(theme.detail)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else if session.workspaceThemeNames.contains(session.deck.theme) {
+                    Text("워크스페이스 테마 · 붓 버튼으로 편집")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
