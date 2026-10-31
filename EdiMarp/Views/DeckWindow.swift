@@ -76,6 +76,7 @@ private struct WorkspaceRoot: View {
                 if deck.layout != .editor {
                     PreviewView(session: deck)
                         .frame(minWidth: 320, idealWidth: 640, maxWidth: .infinity, maxHeight: .infinity)
+                        .imageDropTarget(workspace)
                 }
             }
             if deck.inspectorShown {

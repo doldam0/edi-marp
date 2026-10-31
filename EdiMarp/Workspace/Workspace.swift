@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import EdiCore
 
 /// A window's workspace: a folder holding deck markdown, theme CSS, and images.
@@ -201,6 +202,105 @@ final class Workspace: ObservableObject {
         return "\(baseName)-\(i)"
     }
 
+    // MARK: Assets
+
+    /// Images copied in by drag/paste/picker land here, beside the deck.
+    static let assetsFolder = "assets"
+
+    private static let stampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyyMMdd-HHmmss"
+        return f
+    }()
+
+    /// Copies an external image into the workspace (or references one already
+    /// inside it), then inserts an image tag at the deck's caret. The markdown
+    /// stays the single source of truth; the preview serves the file by path.
+    @discardableResult
+    func insertImage(from sourceURL: URL) -> Bool {
+        guard FileNode(url: sourceURL, isDirectory: false).isImage else { return false }
+        let accessing = sourceURL.startAccessingSecurityScopedResource()
+        defer { if accessing { sourceURL.stopAccessingSecurityScopedResource() } }
+
+        let target: URL
+        let rootPath = root.standardizedFileURL.path
+        if sourceURL.standardizedFileURL.path.hasPrefix(rootPath + "/") {
+            target = sourceURL // already in the workspace: reference it in place
+        } else {
+            guard let dir = assetsDirectory() else { return false }
+            let dest = uniqueFile(in: dir, base: sourceURL.deletingPathExtension().lastPathComponent,
+                                  ext: sourceURL.pathExtension)
+            guard (try? FileManager.default.copyItem(at: sourceURL, to: dest)) != nil else { return false }
+            target = dest
+        }
+        insertImageTag(for: target)
+        return true
+    }
+
+    /// Writes raw image data (a paste, or a drag from another app) into the
+    /// assets folder and inserts an image tag at the deck's caret.
+    @discardableResult
+    func insertImage(data: Data, fileExtension ext: String) -> Bool {
+        guard !data.isEmpty, let dir = assetsDirectory() else { return false }
+        let stamp = Self.stampFormatter.string(from: Date())
+        let dest = uniqueFile(in: dir, base: "image-\(stamp)", ext: ext.isEmpty ? "png" : ext)
+        guard (try? data.write(to: dest)) != nil else { return false }
+        insertImageTag(for: dest)
+        return true
+    }
+
+    /// Opens a picker to choose one or more images to import.
+    func importImagesViaPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.image]
+        panel.prompt = "추가"
+        panel.message = "덱에 추가할 이미지를 선택하세요"
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls { insertImage(from: url) }
+    }
+
+    private func assetsDirectory() -> URL? {
+        let dir = root.appendingPathComponent(Self.assetsFolder, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var isDir: ObjCBool = false
+        return FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir) && isDir.boolValue ? dir : nil
+    }
+
+    private func uniqueFile(in dir: URL, base: String, ext: String) -> URL {
+        let fm = FileManager.default
+        let safeBase = base.isEmpty ? "image" : base
+        let suffix = ext.isEmpty ? "" : ".\(ext.lowercased())"
+        var candidate = dir.appendingPathComponent(safeBase + suffix)
+        var n = 1
+        while fm.fileExists(atPath: candidate.path) {
+            candidate = dir.appendingPathComponent("\(safeBase)-\(n)\(suffix)")
+            n += 1
+        }
+        return candidate
+    }
+
+    /// Inserts `![](path)` at the deck's caret, showing the deck first so the
+    /// edit is visible, and refreshes the tree for any newly copied file.
+    private func insertImageTag(for assetURL: URL) {
+        showDeckFile()
+        let rel = Workspace.relativePath(from: deckURL.deletingLastPathComponent(), to: assetURL)
+        deck.editor.insertAtCaret("![](\(rel))", actionName: "이미지 삽입")
+        bumpTree()
+    }
+
+    /// A forward-slash path from `base` (a folder) to `target`, as markdown wants.
+    static func relativePath(from base: URL, to target: URL) -> String {
+        let baseComps = base.standardizedFileURL.pathComponents
+        let targetComps = target.standardizedFileURL.pathComponents
+        var i = 0
+        while i < baseComps.count, i < targetComps.count, baseComps[i] == targetComps[i] { i += 1 }
+        let ups = Array(repeating: "..", count: baseComps.count - i)
+        return (ups + targetComps[i...]).joined(separator: "/")
+    }
+
     // MARK: Tree
 
     func bumpTree() {
@@ -211,11 +311,11 @@ final class Workspace: ObservableObject {
     // MARK: Scanning
 
     private static func findDecks(in root: URL) -> [URL] {
-        children(of: root).filter { ["md", "markdown"].contains($0.pathExtension.lowercased()) }
+        allFiles(in: root).filter { ["md", "markdown"].contains($0.pathExtension.lowercased()) }
     }
 
     private static func findThemes(in root: URL) -> [ThemeFile] {
-        children(of: root)
+        allFiles(in: root)
             .filter { $0.pathExtension.lowercased() == "css" }
             .compactMap { url in
                 guard let text = try? String(contentsOf: url, encoding: .utf8),
@@ -224,9 +324,34 @@ final class Workspace: ObservableObject {
             }
     }
 
-    private static func children(of root: URL) -> [URL] {
-        ((try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? [])
-            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+    /// Folder names that never hold deck content and would only slow the scan.
+    private static let ignoredDirectories: Set<String> = [
+        "node_modules", ".git", ".build", "build", "DerivedData", ".next", "dist", "out", ".venv",
+    ]
+
+    /// Every regular file in the workspace, recursively, depth-first and sorted
+    /// by path so decks and themes in subfolders are found too.
+    private static func allFiles(in root: URL) -> [URL] {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isRegularFileKey]
+        guard let enumerator = FileManager.default.enumerator(
+            at: root, includingPropertiesForKeys: keys,
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
+        var files: [URL] = []
+        for case let url as URL in enumerator {
+            let values = try? url.resourceValues(forKeys: Set(keys))
+            if values?.isDirectory == true {
+                if ignoredDirectories.contains(url.lastPathComponent) { enumerator.skipDescendants() }
+            } else if values?.isRegularFile == true {
+                files.append(url)
+            }
+        }
+        // Shallower paths first (so a root deck opens before a subfolder one),
+        // then alphabetically.
+        return files.sorted { a, b in
+            let da = a.pathComponents.count, db = b.pathComponents.count
+            if da != db { return da < db }
+            return a.path.localizedStandardCompare(b.path) == .orderedAscending
+        }
     }
 
     nonisolated static func themeName(in css: String) -> String? {

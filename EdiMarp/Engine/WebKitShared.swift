@@ -57,6 +57,9 @@ final class SlideHostView: WKWebView, WKScriptMessageHandler, WKNavigationDelega
         if let url = WebKitShared.slideShellURL {
             loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
+        // Let the SwiftUI preview handle image drops rather than the web view
+        // trying to navigate to the dropped file.
+        unregisterDraggedTypes()
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }

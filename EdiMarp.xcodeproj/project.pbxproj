@@ -19,6 +19,7 @@
 		2E8E774D8A9A0670C331FB50 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865D9083FA59ECB1059B9919 /* Preferences.swift */; };
 		3074030B180E045ADBAE17E3 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 415EF2B570C708370BC020C5 /* EditorView.swift */; };
 		41A1010C89FEF39DD1453D3F /* MarkdownHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC20842DD5BF7F1152C31046 /* MarkdownHighlighter.swift */; };
+		45005C4563CB562C858CFBD5 /* ImageDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC0826A52E3D420043CDB14 /* ImageDrop.swift */; };
 		4DD771CC951D7C69821208F7 /* DebugScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 502EDCC42ED146FB878C4446 /* DebugScript.swift */; };
 		4FFB024EEF18755AD4452358 /* PresenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084BCCB3745C9A090F285E30 /* PresenterView.swift */; };
 		54D180347E0B7B3D5C13B852 /* StatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E7344501AB120465E9A5016 /* StatusBar.swift */; };
@@ -60,6 +61,7 @@
 		2886D7629B637FDCFE1AA99E /* AssetSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetSchemeHandler.swift; sourceTree = "<group>"; };
 		2BD8989B9889C0A9F2BB2AC7 /* GutterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GutterView.swift; sourceTree = "<group>"; };
 		2C5041599A1CD139DFEAA8AE /* engine.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = engine.js; sourceTree = "<group>"; };
+		2FC0826A52E3D420043CDB14 /* ImageDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDrop.swift; sourceTree = "<group>"; };
 		34271BBF620BA92638C715DC /* MarpEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarpEngine.swift; sourceTree = "<group>"; };
 		3768EBA105A79ECD15437245 /* EdiMarp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdiMarp.entitlements; sourceTree = "<group>"; };
 		3C51385AEEEE3B93275D5E53 /* Welcome.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Welcome.md; sourceTree = "<group>"; };
@@ -152,6 +154,7 @@
 			children = (
 				2886D7629B637FDCFE1AA99E /* AssetSchemeHandler.swift */,
 				71BA986E8FC24CAF927E51D4 /* FileNode.swift */,
+				2FC0826A52E3D420043CDB14 /* ImageDrop.swift */,
 				62B300810344D00BFC5E2993 /* Workspace.swift */,
 				6C72CD09B12E9D7CC74DDAAF /* WorkspaceRef.swift */,
 			);
@@ -350,6 +353,7 @@
 				A78BC6C7FAD8A029AA055B6E /* FileExplorer.swift in Sources */,
 				6ACFCAA8F42FAD935A59B6A5 /* FileNode.swift in Sources */,
 				901B4EA5C291CFB53D09864A /* GutterView.swift in Sources */,
+				45005C4563CB562C858CFBD5 /* ImageDrop.swift in Sources */,
 				B1A017E58EF167D50E34B7C2 /* InspectorView.swift in Sources */,
 				41A1010C89FEF39DD1453D3F /* MarkdownHighlighter.swift in Sources */,
 				FAE5E9D6DED18D1C627D2BB4 /* MarpEngine.swift in Sources */,

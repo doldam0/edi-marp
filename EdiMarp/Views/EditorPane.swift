@@ -14,6 +14,7 @@ struct EditorPane: View {
             content
         }
         .background(Color(nsColor: .textBackgroundColor))
+        .imageDropTarget(workspace)
     }
 
     private var header: some View {

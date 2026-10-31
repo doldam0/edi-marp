@@ -35,8 +35,8 @@ open build/DerivedData/Build/Products/Debug/EdiMarp.app
 
 On first launch, open a folder as a **workspace** (⌘O) or create one (⌘⇧N). A
 workspace is any folder; the app finds the markdown decks and `/* @theme */` CSS files
-in it, and resolves image paths relative to it. Access to the folder persists across
-launches via a security-scoped bookmark.
+in it and its subfolders, and resolves image paths relative to it. Access to the folder
+persists across launches via a security-scoped bookmark.
 
 ## Architecture
 
@@ -82,8 +82,16 @@ Things worth calling out:
   workspace and the brush opens it; editing re-renders the deck live. With a built-in
   theme the brush offers to create an editable custom copy.
 - **Rendering is isolated.** Marp runs as JavaScript in a hidden WebView, so a parse error
-  never takes down the UI; each slide draws in its own transparent WebView, and images
-  are served from the workspace through a private URL scheme.
+  never takes down the UI; each slide draws in its own WebView, and images are served from
+  the workspace through a private URL scheme. The live preview renders Marp's HTML output
+  (plain `<section>`, scaled to fit) rather than its inline-SVG output, which a `WKWebView`
+  fails to paint; export and PDF keep the inline SVG.
+- **Images manage themselves.** Drop an image on the editor or preview, or use **이미지 추가**
+  (`⌃⌘I`), and the file is copied into the workspace's `assets/` folder and an image tag is
+  inserted into the deck at the caret; an image already inside the workspace is referenced in
+  place. The markdown stays the source of truth and the preview serves the file by path.
+- **The whole folder is the workspace.** Decks and `/* @theme */` CSS are found recursively,
+  so a deck in a subfolder and a theme beside it both show up.
 
 ## Keyboard shortcuts
 
@@ -101,6 +109,7 @@ Things worth calling out:
 | `⌥ ⌘ 1 / 2` | Edit deck markdown / theme CSS |
 | `⌘ 0` | Sidebar: slides / files |
 | `⌥ ⌘ P` | Start presenting |
+| `⌃ ⌘ I` | Add image(s) to the deck |
 | `⌘ O` · `⌘ ⇧ N` | Open / new workspace |
 | `⌘ S` · `⌘ ⇧ E` · `⌘ P` | Save · Export HTML · Print |
 | `⌃ ⌘ R` | Reload engine |
@@ -121,15 +130,19 @@ appear in the theme menu and can be edited as text with the brush button.
 cd Packages/EdiCore && swift test     # parser + transforms
 ```
 
-The app also has an opt-in scripted smoke test (32 checks) that drives a real window
+The app also has an opt-in scripted smoke test (36 checks) that drives a real window
 through every slide operation, undo, theme switch, layout change, the editor's deck /
-theme toggle, and the custom-theme flow:
+theme toggle, the custom-theme flow, recursive deck/theme scanning, and image import:
 
 ```bash
 EDIMARP_DEBUG=/tmp/diag.log EDIMARP_DEBUG_SCRIPT=1 \
   EDIMARP_TEST_WORKSPACE=/path/to/a/workspace \
   EdiMarp.app/Contents/MacOS/EdiMarp -ApplePersistenceIgnoreState YES
 ```
+
+The test workspace needs a `noir`-themed deck of at least seven slides as `deck.md`,
+an `images/dot.png`, and a subfolder holding a markdown deck and a `/* @theme extra */`
+CSS file (the sandbox only lets the app write the log inside its own container).
 
 ## Headless export
 
@@ -159,5 +172,5 @@ than to the source tree.) `⌃⌘R` reloads the engine manually.
 ## Not included
 
 - PPTX / Keynote export (HTML and PDF only).
-- Recursive workspace scanning for decks and themes (top-level only).
-- Automatic asset management beyond serving what the markdown references by path.
+- Unused-asset cleanup and broken-link warnings (images are imported and served,
+  but not pruned or validated).

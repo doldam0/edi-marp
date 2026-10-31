@@ -164,6 +164,32 @@ enum DebugScript {
         }
         workspace.showDeckFile()
 
+        // Recursive scan: decks and themes in subfolders are found.
+        check("recursive deck scan", workspace.decks.contains { $0.lastPathComponent == "chapter.md" },
+              "decks=\(workspace.decks.map(\.lastPathComponent))")
+        check("recursive theme scan", workspace.themeFiles.contains { $0.name == "extra" },
+              "themes=\(workspace.themeFiles.map(\.name))")
+
+        // Asset management: reference an image already in the workspace.
+        workspace.showDeckFile()
+        let refImage = workspace.root.appendingPathComponent("images/dot.png")
+        let refOK = workspace.insertImage(from: refImage)
+        await waitUntil { session.editor.text.contains("![](images/dot.png)") }
+        check("insert in-workspace image", refOK && session.editor.text.contains("![](images/dot.png)"),
+              "tail=\(session.editor.text.suffix(40).replacingOccurrences(of: "\n", with: "\\n"))")
+
+        // Asset management: raw image data is copied into the assets folder.
+        let assetsDir = workspace.root.appendingPathComponent(Workspace.assetsFolder)
+        let assetCount = { (try? FileManager.default.contentsOfDirectory(atPath: assetsDir.path).count) ?? 0 }
+        let assetsBefore = assetCount()
+        let onePixelPNG = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")!
+        let dataOK = workspace.insertImage(data: onePixelPNG, fileExtension: "png")
+        await waitUntil { assetCount() > assetsBefore }
+        check("import image data to assets", dataOK && assetCount() == assetsBefore + 1 && session.editor.text.contains("![](assets/image-"),
+              "assets=\(assetCount()) before=\(assetsBefore)")
+
+        workspace.showDeckFile()
+
         Diag.log("SCRIPT done")
     }
 }

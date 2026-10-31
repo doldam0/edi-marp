@@ -75,6 +75,14 @@ struct DeckCommands: Commands {
         }
 
         CommandMenu("삽입") {
+            Button {
+                workspace?.importImagesViaPanel()
+            } label: {
+                Label("이미지 추가…", systemImage: "photo.badge.plus")
+            }
+            .keyboardShortcut("i", modifiers: [.command, .control])
+            .disabled(workspace == nil)
+            Divider()
             ForEach(Snippets.all) { snippet in
                 Button {
                     deck?.insertSnippet(snippet)

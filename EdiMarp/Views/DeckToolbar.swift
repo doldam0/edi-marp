@@ -15,6 +15,13 @@ struct DeckToolbar: ToolbarContent {
             }
             .help("현재 슬라이드 아래에 새 슬라이드 (⌘⏎)")
 
+            Button {
+                workspace.importImagesViaPanel()
+            } label: {
+                Label("이미지 추가", systemImage: "photo.badge.plus")
+            }
+            .help("이미지를 워크스페이스로 복사하고 덱에 삽입")
+
             Picker("레이아웃", selection: Binding(
                 get: { deck.layout },
                 set: { deck.layout = $0 }

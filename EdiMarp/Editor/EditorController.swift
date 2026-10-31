@@ -86,6 +86,11 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         textView.string = text
         applyFont()
 
+        // Let the surrounding SwiftUI view handle image drops (copy into the
+        // workspace + insert markdown) instead of the text view inserting a
+        // file path or attachment.
+        textView.unregisterDraggedTypes()
+
         scrollView.contentView.postsBoundsChangedNotifications = true
         boundsObserver = NotificationCenter.default.addObserver(
             forName: NSView.boundsDidChangeNotification, object: scrollView.contentView, queue: .main) { [weak self] _ in
