@@ -12,7 +12,16 @@ hidden slide model to drift out of sync, and ⌘Z reverses any action, GUI or ty
 
 ## Running it
 
-Requires macOS 26+ and Xcode 26+.
+Requires macOS 26+ and Xcode 26+. PDF export (and print) shell out to the
+[`marp` CLI](https://github.com/marp-team/marp-cli) rendering in headless
+Chrome, so they need `marp-cli` and Google Chrome installed:
+
+```bash
+npm i -g @marp-team/marp-cli   # for PDF / print; HTML and preview need neither
+```
+
+The app is not sandboxed, so it can launch the CLI; preview and HTML export work
+without it.
 
 ```bash
 # 1. Build the Marp engine bundle (once, or after changing engine/)
@@ -63,7 +72,8 @@ EdiMarp/                The SwiftUI app.
                         (one slide in its own transparent WebView).
   Views/                NavigationSplitView shell, sidebar (slides / files), editor
                         pane, focus/grid preview, inspector, presenter, toolbar.
-  Export/               Standalone HTML (images inlined), vector PDF, print.
+  Export/               Standalone HTML (images inlined) via marp-core; PDF and
+                        print via the marp CLI (headless Chrome, vector output).
 ```
 
 Things worth calling out:
@@ -85,7 +95,12 @@ Things worth calling out:
   never takes down the UI; each slide draws in its own WebView, and images are served from
   the workspace through a private URL scheme. The live preview renders Marp's HTML output
   (plain `<section>`, scaled to fit) rather than its inline-SVG output, which a `WKWebView`
-  fails to paint; export and PDF keep the inline SVG.
+  fails to paint.
+- **Two rendering paths, one Marp.** The live preview and HTML export use the bundled
+  `marp-core` engine in-process, so typing re-renders instantly and offline. PDF (and print)
+  go through the `marp` CLI, which renders in headless Chrome and so produces a true vector
+  PDF with the theme's gradients intact — WebKit's own PDF drawing turns a `radial-gradient`
+  that fades to `transparent` into a hard-edged disc. The two track the same Marp version.
 - **Images manage themselves.** Drop an image on the editor or preview, or use **이미지 추가**
   (`⌃⌘I`), and the file is copied into the workspace's `assets/` folder and an image tag is
   inserted into the deck at the caret; an image already inside the workspace is referenced in
@@ -110,6 +125,8 @@ Things worth calling out:
 | `⌘ 0` | Sidebar: slides / files |
 | `⌥ ⌘ P` | Start presenting |
 | `⌃ ⌘ I` | Add image(s) to the deck |
+| `⌘ /` | Toggle comment (selection or current line) |
+| `⌘ B` · `⌘ I` | Bold · italic (selection or word) |
 | `⌘ O` · `⌘ ⇧ N` | Open / new workspace |
 | `⌘ S` · `⌘ ⇧ E` · `⌘ P` | Save · Export HTML · Print |
 | `⌃ ⌘ R` | Reload engine |
@@ -142,7 +159,7 @@ EDIMARP_DEBUG=/tmp/diag.log EDIMARP_DEBUG_SCRIPT=1 \
 
 The test workspace needs a `noir`-themed deck of at least seven slides as `deck.md`,
 an `images/dot.png`, and a subfolder holding a markdown deck and a `/* @theme extra */`
-CSS file (the sandbox only lets the app write the log inside its own container).
+CSS file.
 
 ## Headless export
 
@@ -151,8 +168,9 @@ EDIMARP_EXPORT_INPUT=deck.md EDIMARP_EXPORT_OUTPUT=deck.pdf \
   EdiMarp.app/Contents/MacOS/EdiMarp      # .pdf or .html
 ```
 
-Sibling `.css` theme files and relative images in the deck's folder are included;
-exported HTML inlines images as data URIs so the file is self-contained.
+Workspace themes (recursively) and relative images in the deck's folder are included;
+exported HTML inlines images as data URIs so the file is self-contained, and PDF uses
+the marp CLI (so it needs `marp-cli` and Chrome).
 
 ## Engine live reload
 
@@ -166,8 +184,8 @@ EDIMARP_OUT_DIR="$(cd ..; pwd)/build/DerivedData/Build/Products/Debug/EdiMarp.ap
   npm run watch
 ```
 
-(The sandbox lets the app read only its own bundle, so live reload writes there rather
-than to the source tree.) `⌃⌘R` reloads the engine manually.
+(The app loads the engine bundle from inside its own `.app`, so live reload writes there
+rather than to the source tree.) `⌃⌘R` reloads the engine manually.
 
 ## Not included
 

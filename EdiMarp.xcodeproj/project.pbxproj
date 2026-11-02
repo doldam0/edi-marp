@@ -26,6 +26,7 @@
 		6ACFCAA8F42FAD935A59B6A5 /* FileNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BA986E8FC24CAF927E51D4 /* FileNode.swift */; };
 		6BE7F1A895B0EA31884E8A80 /* WebKitShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = D78EC572608EF17AB8167C63 /* WebKitShared.swift */; };
 		6FCD7C0CB2A096A45705C243 /* Exporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2120132590E883FD0995D502 /* Exporter.swift */; };
+		704AF053E16D2CA795649319 /* MarpCLI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5DA7E4EDBA50E14F2C4E214 /* MarpCLI.swift */; };
 		72FFFBD4EA651DA218EA8451 /* CSSHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282AFD76D777713B27C56F36 /* CSSHighlighter.swift */; };
 		7300F3A56C202BF90BC7FF21 /* DeckSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06D61391D4EE469E34A36F38 /* DeckSession.swift */; };
 		791F26F832AEF3F316343E24 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8653B349601FC173A567D886 /* SettingsView.swift */; };
@@ -91,6 +92,7 @@
 		D78EC572608EF17AB8167C63 /* WebKitShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebKitShared.swift; sourceTree = "<group>"; };
 		DC20842DD5BF7F1152C31046 /* MarkdownHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlighter.swift; sourceTree = "<group>"; };
 		EECEAE504C2BB803A08D27BE /* ThemeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeCatalog.swift; sourceTree = "<group>"; };
+		F5DA7E4EDBA50E14F2C4E214 /* MarpCLI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarpCLI.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -165,6 +167,7 @@
 			isa = PBXGroup;
 			children = (
 				2120132590E883FD0995D502 /* Exporter.swift */,
+				F5DA7E4EDBA50E14F2C4E214 /* MarpCLI.swift */,
 			);
 			path = Export;
 			sourceTree = "<group>";
@@ -356,6 +359,7 @@
 				45005C4563CB562C858CFBD5 /* ImageDrop.swift in Sources */,
 				B1A017E58EF167D50E34B7C2 /* InspectorView.swift in Sources */,
 				41A1010C89FEF39DD1453D3F /* MarkdownHighlighter.swift in Sources */,
+				704AF053E16D2CA795649319 /* MarpCLI.swift in Sources */,
 				FAE5E9D6DED18D1C627D2BB4 /* MarpEngine.swift in Sources */,
 				2E8E774D8A9A0670C331FB50 /* Preferences.swift in Sources */,
 				4FFB024EEF18755AD4452358 /* PresenterView.swift in Sources */,
