@@ -5,7 +5,18 @@ import AppKit
 protocol SyntaxHighlighter: AnyObject {
     var baseAttributes: [NSAttributedString.Key: Any] { get }
     func update(font: NSFont)
-    func highlight(_ storage: NSTextStorage)
+    /// Re-colors only `range`. Re-coloring the whole document on every keystroke
+    /// re-applies bold/italic/heading fonts across it, which invalidates all
+    /// layout and makes a scrolled-down editor jump; limiting the range to the
+    /// edited block keeps the layout (and the viewport) stable.
+    func highlight(_ storage: NSTextStorage, in range: NSRange)
+}
+
+extension SyntaxHighlighter {
+    /// Whole-document pass, for loading a file or changing the font.
+    func highlight(_ storage: NSTextStorage) {
+        highlight(storage, in: NSRange(location: 0, length: storage.length))
+    }
 }
 
 /// No highlighting beyond the base font/color — for arbitrary text files.
@@ -14,8 +25,8 @@ final class PlainHighlighter: SyntaxHighlighter {
     init(font: NSFont) { self.font = font }
     var baseAttributes: [NSAttributedString.Key: Any] { [.font: font, .foregroundColor: NSColor.textColor] }
     func update(font: NSFont) { self.font = font }
-    func highlight(_ storage: NSTextStorage) {
-        storage.setAttributes(baseAttributes, range: NSRange(location: 0, length: storage.length))
+    func highlight(_ storage: NSTextStorage, in range: NSRange) {
+        storage.setAttributes(baseAttributes, range: range)
     }
 }
 
@@ -53,13 +64,12 @@ final class CSSHighlighter: SyntaxHighlighter {
     private static let important = re(#"!important\b"#)
     private static let comment = re(#"/\*[\s\S]*?\*/"#)
 
-    func highlight(_ storage: NSTextStorage) {
+    func highlight(_ storage: NSTextStorage, in range: NSRange) {
         let text = storage.string
-        let all = NSRange(location: 0, length: (text as NSString).length)
-        storage.setAttributes(baseAttributes, range: all)
+        storage.setAttributes(baseAttributes, range: range)
 
         func apply(_ regex: NSRegularExpression, group: Int = 0, _ attrs: [NSAttributedString.Key: Any]) {
-            regex.enumerateMatches(in: text, options: [], range: all) { m, _, _ in
+            regex.enumerateMatches(in: text, options: [], range: range) { m, _, _ in
                 guard let m, m.range(at: group).location != NSNotFound else { return }
                 storage.addAttributes(attrs, range: m.range(at: group))
             }

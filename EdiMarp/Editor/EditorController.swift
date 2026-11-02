@@ -130,6 +130,39 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         gutter.needsDisplay = true
     }
 
+    /// The range to re-color after an edit. For markdown it is the Marp slide
+    /// (the lines between `---` separators) containing the edit, so multi-line
+    /// constructs within a slide stay correct while the rest of the document is
+    /// left untouched; other files use the edited paragraph.
+    private func highlightScope(for edited: NSRange, in ns: NSString) -> NSRange {
+        guard language == .markdown else { return ns.paragraphRange(for: edited) }
+
+        func isSeparator(_ lineRange: NSRange) -> Bool {
+            let s = ns.substring(with: lineRange).trimmingCharacters(in: .whitespacesAndNewlines)
+            return s == "---" || s == "***" || s == "___"
+        }
+
+        var start = 0
+        var scan = edited.location
+        while scan > 0 {
+            let line = ns.lineRange(for: NSRange(location: scan - 1, length: 0))
+            if isSeparator(line) { start = NSMaxRange(line); break }
+            if line.location == 0 { break }
+            scan = line.location
+        }
+
+        var end = ns.length
+        scan = min(NSMaxRange(edited), ns.length)
+        while scan < ns.length {
+            let line = ns.lineRange(for: NSRange(location: scan, length: 0))
+            if isSeparator(line) { end = line.location; break }
+            if NSMaxRange(line) >= ns.length { break }
+            scan = NSMaxRange(line)
+        }
+
+        return NSRange(location: start, length: max(0, end - start))
+    }
+
     // MARK: Mutations
 
     /// Replaces the whole text without touching the undo stack (external reloads).
@@ -305,7 +338,9 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
                      range editedRange: NSRange, changeInLength delta: Int) {
         guard editedMask.contains(.editedCharacters), !highlighting else { return }
         highlighting = true
-        highlighter.highlight(textStorage)
+        // Re-color only the edited block, not the whole document: a full pass
+        // re-lays-out everything and makes a scrolled editor jump.
+        highlighter.highlight(textStorage, in: highlightScope(for: editedRange, in: textStorage.string as NSString))
         highlighting = false
         gutter.needsDisplay = true
         onTextChange?(textStorage.string)

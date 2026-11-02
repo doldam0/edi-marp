@@ -49,14 +49,12 @@ final class MarkdownHighlighter: SyntaxHighlighter {
     private static let quote = re(#"^ {0,3}> ?.*$"#)
     private static let math = re(#"^\$\$[\s\S]*?^\$\$"#)
 
-    func highlight(_ storage: NSTextStorage) {
-        let text = storage.string as NSString
-        let all = NSRange(location: 0, length: text.length)
-        storage.setAttributes(baseAttributes, range: all)
+    func highlight(_ storage: NSTextStorage, in range: NSRange) {
+        storage.setAttributes(baseAttributes, range: range)
 
         func apply(_ regex: NSRegularExpression, group: Int = 0, _ attrs: [NSAttributedString.Key: Any]) {
-            regex.enumerateMatches(in: storage.string, options: [], range: all) { m, _, _ in
-                guard let m else { return }
+            regex.enumerateMatches(in: storage.string, options: [], range: range) { m, _, _ in
+                guard let m, m.range(at: group).location != NSNotFound else { return }
                 storage.addAttributes(attrs, range: m.range(at: group))
             }
         }
