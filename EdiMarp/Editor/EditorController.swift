@@ -29,6 +29,11 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         didSet { applyFont() }
     }
 
+    /// Empty means the system monospaced font; otherwise a PostScript/family name.
+    var fontName: String {
+        didSet { if fontName != oldValue { applyFont() } }
+    }
+
     var showGutter: Bool {
         didSet { scrollView.rulersVisible = showGutter }
     }
@@ -45,9 +50,11 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         self.language = language
         let defaults = UserDefaults.standard
         fontSize = CGFloat(defaults.double(forKey: Pref.editorFontSize)).clamped(10, 28)
+        fontName = defaults.string(forKey: Pref.editorFontName) ?? ""
         showGutter = defaults.bool(forKey: Pref.showGutter)
         spellCheck = defaults.bool(forKey: Pref.spellCheck)
-        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        let font = (fontName.isEmpty ? nil : NSFont(name: fontName, size: fontSize))
+            ?? NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         switch language {
         case .markdown: highlighter = MarkdownHighlighter(font: font)
         case .css: highlighter = CSSHighlighter(font: font)
@@ -112,8 +119,13 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
     var text: String { textView.string }
     var caretOffset: Int { textView.selectedRange().location }
 
+    private func makeFont() -> NSFont {
+        if !fontName.isEmpty, let font = NSFont(name: fontName, size: fontSize) { return font }
+        return NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+    }
+
     private func applyFont() {
-        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        let font = makeFont()
         highlighter.update(font: font)
         textView.font = font
         textView.typingAttributes = highlighter.baseAttributes

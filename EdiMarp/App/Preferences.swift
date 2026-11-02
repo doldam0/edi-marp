@@ -3,6 +3,7 @@ import Foundation
 /// UserDefaults keys shared by Settings and the sessions.
 enum Pref {
     static let editorFontSize = "editorFontSize"
+    static let editorFontName = "editorFontName"
     static let defaultTheme = "defaultTheme"
     static let showGutter = "showGutter"
     static let spellCheck = "spellCheck"
@@ -18,6 +19,7 @@ enum Pref {
     static func register() {
         UserDefaults.standard.register(defaults: [
             editorFontSize: 13.0,
+            editorFontName: "",
             defaultTheme: "default",
             showGutter: true,
             spellCheck: true,

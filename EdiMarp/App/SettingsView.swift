@@ -1,6 +1,20 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Installed font families, split into fixed-pitch and proportional, for the
+/// editor font picker. Computed once on first use.
+enum EditorFonts {
+    static let monospaced: [String] = families(fixedPitch: true)
+    static let proportional: [String] = families(fixedPitch: false)
+
+    private static func families(fixedPitch: Bool) -> [String] {
+        NSFontManager.shared.availableFontFamilies.filter { family in
+            guard !family.hasPrefix("."), let font = NSFont(name: family, size: 12) else { return false }
+            return font.isFixedPitch == fixedPitch
+        }.sorted()
+    }
+}
+
 struct SettingsView: View {
     var body: some View {
         TabView {
@@ -17,19 +31,33 @@ struct SettingsView: View {
 
 private struct EditorSettings: View {
     @AppStorage(Pref.editorFontSize) private var fontSize = 13.0
+    @AppStorage(Pref.editorFontName) private var fontName = ""
     @AppStorage(Pref.showGutter) private var showGutter = true
     @AppStorage(Pref.spellCheck) private var spellCheck = true
 
     var body: some View {
         Form {
             Section("글꼴") {
+                Picker("글꼴 종류", selection: $fontName) {
+                    Text("시스템 고정폭").tag("")
+                    Section("고정폭") {
+                        ForEach(EditorFonts.monospaced, id: \.self) { name in
+                            Text(name).font(.custom(name, size: 13)).tag(name)
+                        }
+                    }
+                    Section("일반") {
+                        ForEach(EditorFonts.proportional, id: \.self) { name in
+                            Text(name).font(.custom(name, size: 13)).tag(name)
+                        }
+                    }
+                }
                 HStack {
                     Slider(value: $fontSize, in: 10...24, step: 1)
                     Stepper(value: $fontSize, in: 10...24, step: 1) {
                         Text("\(Int(fontSize)) pt").monospacedDigit().frame(width: 48, alignment: .trailing)
                     }
                 }
-                Text("편집기 글자 크기. 미리보기는 테마가 정합니다.")
+                Text("편집기 글꼴과 크기. 미리보기는 테마가 정합니다.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("표시") {
