@@ -90,6 +90,21 @@ struct DeckCommands: Commands {
             .keyboardShortcut("/", modifiers: [.command])
             .disabled(deck == nil)
             Divider()
+            Button {
+                deck?.toggleBold()
+            } label: {
+                Label("굵게", systemImage: "bold")
+            }
+            .keyboardShortcut("b", modifiers: [.command])
+            .disabled(deck == nil)
+            Button {
+                deck?.toggleItalic()
+            } label: {
+                Label("기울임", systemImage: "italic")
+            }
+            .keyboardShortcut("i", modifiers: [.command])
+            .disabled(deck == nil)
+            Divider()
             ForEach(Snippets.all) { snippet in
                 Button {
                     deck?.insertSnippet(snippet)

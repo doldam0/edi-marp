@@ -269,6 +269,10 @@ final class DeckSession: ObservableObject {
     func toggleComment() {
         editor.toggleComment()
     }
+
+    /// Bold / italic the selection or the word at the caret (⌘B / ⌘I).
+    func toggleBold() { editor.toggleInlineWrap("**", actionName: "굵게") }
+    func toggleItalic() { editor.toggleInlineWrap("*", actionName: "기울임") }
 }
 
 extension Collection {

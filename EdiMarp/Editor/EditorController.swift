@@ -218,6 +218,38 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         textView.window?.makeFirstResponder(textView)
     }
 
+    /// Wraps the selection (or the word at the caret) in `marker` for bold/italic,
+    /// toggling it off when already wrapped. With no word under the caret it
+    /// inserts the empty markers and places the caret between them.
+    func toggleInlineWrap(_ marker: String, actionName: String) {
+        let ns = textView.string as NSString
+        var range = textView.selectedRange()
+        let hadSelection = range.length > 0
+        if !hadSelection {
+            func isBoundary(_ c: unichar) -> Bool { c == 32 || c == 9 || c == 10 || c == 13 }
+            var lo = range.location, hi = range.location
+            while lo > 0, !isBoundary(ns.character(at: lo - 1)) { lo -= 1 }
+            while hi < ns.length, !isBoundary(ns.character(at: hi)) { hi += 1 }
+            range = NSRange(location: lo, length: hi - lo)
+        }
+        let text = ns.substring(with: range)
+        let m = marker
+        let wrapped = text.hasPrefix(m) && text.hasSuffix(m) && text.count >= 2 * m.count
+        let replacement = wrapped ? String(text.dropFirst(m.count).dropLast(m.count)) : m + text + m
+        apply([Edit(range: range, insert: replacement)], actionName: actionName)
+
+        let mLen = (m as NSString).length
+        let repLen = (replacement as NSString).length
+        if !wrapped, text.isEmpty {
+            textView.setSelectedRange(NSRange(location: range.location + mLen, length: 0))
+        } else if hadSelection {
+            textView.setSelectedRange(NSRange(location: range.location, length: repLen))
+        } else {
+            textView.setSelectedRange(NSRange(location: range.location + repLen, length: 0))
+        }
+        textView.window?.makeFirstResponder(textView)
+    }
+
     func moveCaret(to offset: Int, focus: Bool) {
         let length = (textView.string as NSString).length
         let range = NSRange(location: max(0, min(offset, length)), length: 0)
