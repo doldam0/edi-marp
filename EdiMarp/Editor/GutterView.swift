@@ -72,10 +72,14 @@ final class GutterView: NSRulerView {
             let isActive = self.marpMode && deck.slideIndex(atLine: line) == self.activeSlide
 
             if let badge = badges[line] {
+                // A badge sits on the `---` line above its slide, which belongs
+                // to the *previous* slide, so highlight by the badge's own slide
+                // (badge - 1), not the line's slide.
+                let badgeActive = self.marpMode && badge - 1 == self.activeSlide
                 let label = NSAttributedString(string: "\(badge)", attributes: [.font: self.badgeFont, .foregroundColor: NSColor.white])
                 let size = label.size()
                 let pill = NSRect(x: width - 8 - max(18, size.width + 10), y: y + (lineHeight - 16) / 2, width: max(18, size.width + 10), height: 16)
-                (isActive ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+                (badgeActive ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
                 NSBezierPath(roundedRect: pill, xRadius: 8, yRadius: 8).fill()
                 label.draw(at: NSPoint(x: pill.midX - size.width / 2, y: pill.midY - size.height / 2))
             } else {

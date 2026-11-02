@@ -82,6 +82,13 @@ struct DeckCommands: Commands {
             }
             .keyboardShortcut("i", modifiers: [.command, .control])
             .disabled(workspace == nil)
+            Button {
+                deck?.insertComment()
+            } label: {
+                Label("주석 추가", systemImage: "text.bubble")
+            }
+            .keyboardShortcut("/", modifiers: [.command, .control])
+            .disabled(deck == nil)
             Divider()
             ForEach(Snippets.all) { snippet in
                 Button {

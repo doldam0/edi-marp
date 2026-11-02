@@ -22,6 +22,13 @@ struct DeckToolbar: ToolbarContent {
             }
             .help("이미지를 워크스페이스로 복사하고 덱에 삽입")
 
+            Button {
+                deck.insertComment()
+            } label: {
+                Label("주석 추가", systemImage: "text.bubble")
+            }
+            .help("발표자 노트 주석(<!-- -->)을 삽입 (⌃⌘/)")
+
             Picker("레이아웃", selection: Binding(
                 get: { deck.layout },
                 set: { deck.layout = $0 }

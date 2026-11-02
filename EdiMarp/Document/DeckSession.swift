@@ -262,6 +262,15 @@ final class DeckSession: ObservableObject {
     func insertSnippet(_ snippet: Snippet) {
         editor.insertAtCaret(snippet.text, actionName: "\(snippet.title) 삽입")
     }
+
+    /// Inserts a speaker-note comment at the caret and puts the cursor inside it,
+    /// ready to type. Marp shows such `<!-- … -->` comments as presenter notes.
+    func insertComment() {
+        let start = editor.caretOffset
+        editor.insertAtCaret("<!--  -->", actionName: "주석 삽입")
+        // Caret between the two spaces: just after the opening "<!-- " (5 chars).
+        editor.moveCaret(to: start + 5, focus: true)
+    }
 }
 
 extension Collection {
