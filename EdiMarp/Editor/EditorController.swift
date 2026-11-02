@@ -164,6 +164,60 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         textView.window?.makeFirstResponder(textView)
     }
 
+    /// VSCode-style comment toggle for Marp's `<!-- -->` comments. With a
+    /// selection, wraps it (or unwraps if already wrapped); with none, toggles
+    /// the current line. An empty target becomes an empty comment with the
+    /// caret placed inside, ready to type.
+    func toggleComment() {
+        let ns = textView.string as NSString
+        let selection = textView.selectedRange()
+        let hasSelection = selection.length > 0
+        let range: NSRange
+        if hasSelection {
+            range = selection
+        } else {
+            var line = ns.lineRange(for: NSRange(location: selection.location, length: 0))
+            if line.length > 0, ns.character(at: line.location + line.length - 1) == 10 { line.length -= 1 }
+            range = line
+        }
+
+        let text = ns.substring(with: range)
+        let core = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let firstContent = text.firstIndex { !$0.isWhitespace }
+        let leading = String(text[text.startIndex..<(firstContent ?? text.endIndex)])
+        let afterLast = (text.lastIndex { !$0.isWhitespace }).map { text.index(after: $0) } ?? text.endIndex
+        let trailing = firstContent == nil ? "" : String(text[afterLast...])
+
+        let replacement: String
+        let actionName: String
+        var caretInsideEmpty = false
+        if core.hasPrefix("<!--"), core.hasSuffix("-->"), core.count >= 7 {
+            var inner = String(core.dropFirst(4).dropLast(3))
+            if inner.hasPrefix(" ") { inner.removeFirst() }
+            if inner.hasSuffix(" ") { inner.removeLast() }
+            replacement = leading + inner + trailing
+            actionName = "주석 해제"
+        } else {
+            replacement = leading + "<!-- " + core + " -->" + trailing
+            actionName = "주석 추가"
+            caretInsideEmpty = core.isEmpty && !hasSelection
+        }
+
+        apply([Edit(range: range, insert: replacement)], actionName: actionName)
+
+        let length = (replacement as NSString).length
+        if hasSelection {
+            textView.setSelectedRange(NSRange(location: range.location, length: length))
+        } else if caretInsideEmpty {
+            let offset = range.location + (leading as NSString).length + ("<!-- " as NSString).length
+            textView.setSelectedRange(NSRange(location: offset, length: 0))
+        } else {
+            textView.setSelectedRange(NSRange(location: range.location + length, length: 0))
+        }
+        textView.scrollRangeToVisible(textView.selectedRange())
+        textView.window?.makeFirstResponder(textView)
+    }
+
     func moveCaret(to offset: Int, focus: Bool) {
         let length = (textView.string as NSString).length
         let range = NSRange(location: max(0, min(offset, length)), length: 0)
