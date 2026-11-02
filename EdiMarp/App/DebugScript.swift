@@ -9,10 +9,39 @@ enum DebugScript {
     static var enabled: Bool { ProcessInfo.processInfo.environment["EDIMARP_DEBUG_SCRIPT"] != nil }
     private static var started = false
 
-    static func run(_ workspace: Workspace) {
+    static func run(_ workspace: Workspace, present: @escaping () -> Void) {
+        pose(workspace, present: present)
         guard enabled, !started else { return }
         started = true
         Task { await script(workspace) }
+    }
+
+    /// `EDIMARP_DEBUG_POSE=grid,files,preview,editor,noinspector,slide=N,presenter,notes`
+    /// puts the window into a given state once it has settled, for screenshots.
+    private static var posed = false
+    private static func pose(_ workspace: Workspace, present: @escaping () -> Void) {
+        guard let spec = ProcessInfo.processInfo.environment["EDIMARP_DEBUG_POSE"], !posed else { return }
+        posed = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            let s = workspace.deck
+            for step in spec.split(separator: ",").map(String.init) {
+                switch step {
+                case "grid": s.previewMode = .grid
+                case "files": workspace.sidebarMode = .files
+                case "preview": s.layout = .preview
+                case "editor": s.layout = .editor
+                case "noinspector": s.inspectorShown = false
+                case "inspector": s.inspectorShown = true
+                case "presenter": present()
+                case "notes": PresenterController.shared.showNotes = true
+                case let x where x.hasPrefix("slide="): s.selectSlide(Int(x.dropFirst(6)) ?? 0)
+                default: Diag.log("POSE unknown step \(step)")
+                }
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+            Diag.log("POSE done: \(spec)")
+        }
     }
 
     private static func check(_ name: String, _ ok: Bool, _ detail: @autoclosure () -> String = "") {

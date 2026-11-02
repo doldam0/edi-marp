@@ -19,6 +19,10 @@ final class GutterView: NSRulerView {
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         clientView = textView
         ruleThickness = 46
+        // macOS 14+ no longer clips views to their bounds by default; the
+        // ruler's background and separator otherwise bleed above the scroll
+        // view, through the editor header and the window toolbar.
+        clipsToBounds = true
     }
 
     required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
@@ -27,9 +31,9 @@ final class GutterView: NSRulerView {
 
     override func drawHashMarksAndLabels(in rect: NSRect) {
         NSColor.textBackgroundColor.setFill()
-        bounds.fill()
+        rect.fill()
         NSColor.separatorColor.setFill()
-        NSRect(x: bounds.maxX - 1, y: bounds.minY, width: 1, height: bounds.height).fill()
+        NSRect(x: bounds.maxX - 1, y: rect.minY, width: 1, height: rect.height).fill()
 
         guard let textView, let layout = textView.textLayoutManager, let content = layout.textContentManager else { return }
         // Only markdown decks carry slide structure; other files parse their own

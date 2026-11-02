@@ -6,14 +6,10 @@ struct WorkspaceSidebar: View {
     @ObservedObject var workspace: Workspace
 
     var body: some View {
-        Group {
-            if workspace.sidebarMode == .slides {
-                SlideSidebar(session: workspace.deck)
-            } else {
-                FileExplorer(workspace: workspace)
-            }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
+        // A plain column, not safe-area insets: the sidebar's List ignores
+        // them, which let the picker float in its own box and the bottom
+        // button cover the last row.
+        VStack(spacing: 0) {
             Picker("", selection: Binding(
                 get: { workspace.sidebarMode },
                 set: { workspace.sidebarMode = $0; UserDefaults.standard.set($0.rawValue, forKey: Pref.sidebarMode) }
@@ -23,9 +19,14 @@ struct WorkspaceSidebar: View {
             }
             .pickerStyle(.segmented)
             .labelStyle(.iconOnly)
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(.bar)
+            if workspace.sidebarMode == .slides {
+                SlideSidebar(session: workspace.deck)
+            } else {
+                FileExplorer(workspace: workspace)
+            }
         }
     }
 }
@@ -46,30 +47,31 @@ struct SlideSidebar: View {
     }
 
     var body: some View {
-        List(selection: selection) {
-            ForEach(session.deck.slides) { slide in
-                SlideRow(session: session, index: slide.index, title: slide.title)
-                    .tag(slide.index)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10))
+        VStack(spacing: 0) {
+            List(selection: selection) {
+                ForEach(session.deck.slides) { slide in
+                    SlideRow(session: session, index: slide.index, title: slide.title)
+                        .tag(slide.index)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10))
+                }
+                .onMove { from, to in
+                    guard let source = from.first else { return }
+                    let target = to > source ? to - 1 : to
+                    session.moveSlide(from: source, to: target)
+                }
             }
-            .onMove { from, to in
-                guard let source = from.first else { return }
-                let target = to > source ? to - 1 : to
-                session.moveSlide(from: source, to: target)
+            .listStyle(.sidebar)
+            .contextMenu(forSelectionType: Int.self) { items in
+                if let index = items.first {
+                    Button("아래에 새 슬라이드") { session.selectSlide(index); session.insertSlide() }
+                    Button("복제") { session.selectSlide(index); session.duplicateSlide() }
+                    Divider()
+                    Button("삭제", role: .destructive) { session.deleteSlide(index) }
+                }
+            } primaryAction: { items in
+                if let index = items.first { session.selectSlide(index, focusEditor: true) }
             }
-        }
-        .listStyle(.sidebar)
-        .contextMenu(forSelectionType: Int.self) { items in
-            if let index = items.first {
-                Button("아래에 새 슬라이드") { session.selectSlide(index); session.insertSlide() }
-                Button("복제") { session.selectSlide(index); session.duplicateSlide() }
-                Divider()
-                Button("삭제", role: .destructive) { session.deleteSlide(index) }
-            }
-        } primaryAction: { items in
-            if let index = items.first { session.selectSlide(index, focusEditor: true) }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Divider()
             HStack {
                 Button {
                     session.insertSlide()

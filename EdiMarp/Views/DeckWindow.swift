@@ -47,6 +47,7 @@ private struct WorkspaceRoot: View {
     @ObservedObject var workspace: Workspace
     @ObservedObject var deck: DeckSession
     @State private var columns: NavigationSplitViewVisibility = .all
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columns) {
@@ -60,7 +61,12 @@ private struct WorkspaceRoot: View {
         .navigationTitle(deck.title)
         .navigationSubtitle("\(deck.slideCount)장 · \(ThemeCatalog.label(for: deck.deck.theme)) · \(workspace.root.lastPathComponent)")
         .focusedSceneObject(workspace)
-        .onAppear { DebugScript.run(workspace) }
+        .onAppear {
+            DebugScript.run(workspace) {
+                PresenterController.shared.start(deck, at: 0)
+                openWindow(id: PresenterController.windowID)
+            }
+        }
     }
 
     // A manual trailing inspector panel. SwiftUI's `.inspector` drives an
@@ -68,21 +74,69 @@ private struct WorkspaceRoot: View {
     // inspector is drawn as an ordinary trailing column instead.
     private var detail: some View {
         HStack(spacing: 0) {
-            HSplitView {
-                if deck.layout != .preview {
-                    EditorPane(workspace: workspace)
-                        .frame(minWidth: 320, idealWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
-                }
-                if deck.layout != .editor {
-                    PreviewView(session: deck)
-                        .frame(minWidth: 320, idealWidth: 640, maxWidth: .infinity, maxHeight: .infinity)
-                        .imageDropTarget(workspace)
-                }
+            SplitPane(showLeft: deck.layout != .preview, showRight: deck.layout != .editor) {
+                EditorPane(workspace: workspace)
+            } right: {
+                PreviewView(session: deck)
+                    .imageDropTarget(workspace)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             if deck.inspectorShown {
                 Divider()
                 InspectorView(session: deck)
                     .frame(width: 290)
+            }
+        }
+    }
+}
+
+/// Editor | preview with a draggable divider. `HSplitView` insisted on a
+/// minimum width well above its panes' and overflowed the window, pushing
+/// the inspector off the edge and squeezing the sidebar; this one always
+/// fits the width it is given.
+private struct SplitPane<Left: View, Right: View>: View {
+    let showLeft: Bool
+    let showRight: Bool
+    @ViewBuilder let left: () -> Left
+    @ViewBuilder let right: () -> Right
+
+    @AppStorage("splitFraction") private var fraction: Double = 0.47
+    @State private var dragStart: Double?
+    private let minWidth: CGFloat = 240
+
+    var body: some View {
+        GeometryReader { geo in
+            let width = geo.size.width
+            let both = showLeft && showRight
+            let leftWidth: CGFloat = both ? min(max(width * fraction, minWidth), max(minWidth, width - minWidth)) : width
+            HStack(spacing: 0) {
+                if showLeft {
+                    left().frame(width: leftWidth, height: geo.size.height)
+                }
+                if both {
+                    Divider()
+                        .overlay {
+                            Color.clear
+                                .frame(width: 9)
+                                .contentShape(Rectangle())
+                                .onHover { inside in
+                                    if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                                }
+                                .gesture(
+                                    DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                                        .onChanged { value in
+                                            if dragStart == nil { dragStart = fraction }
+                                            let start = (dragStart ?? fraction) * width
+                                            let next = min(max(start + value.translation.width, minWidth), width - minWidth)
+                                            fraction = next / width
+                                        }
+                                        .onEnded { _ in dragStart = nil }
+                                )
+                        }
+                }
+                if showRight {
+                    right().frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
     }
