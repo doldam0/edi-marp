@@ -17,6 +17,9 @@ export interface RenderResult {
   notes: string[][]
   /** slide width / height, from the first slide's viewBox */
   aspect: number
+  /** slide box in CSS px (the `section` rule), for the PDF/print renderer */
+  width: number
+  height: number
   /** active theme name, as resolved by Marp */
   theme: string
 }
@@ -81,12 +84,12 @@ function aspectOf(svg: string | undefined): number {
 }
 
 /** HTML mode has no SVG viewBox; the slide box lives on the `section` rule. */
-function aspectFromCSS(css: string): number {
+function sizeFromCSS(css: string): { width: number; height: number } {
   const block = css.match(/>\s*section\s*\{([^}]*)\}/)
   const body = block ? block[1] : ''
   const w = Number(body.match(/\bwidth:\s*([\d.]+)px/)?.[1])
   const h = Number(body.match(/\bheight:\s*([\d.]+)px/)?.[1])
-  return w && h ? w / h : 16 / 9
+  return w && h ? { width: w, height: h } : { width: 1280, height: 720 }
 }
 
 export function render(source: string, extraThemes: string[] = []): RenderResult {
@@ -96,7 +99,8 @@ export function render(source: string, extraThemes: string[] = []): RenderResult
   const { html, css, comments } = marp.render(source, { htmlAsArray: true })
   const slides = html as unknown as string[]
   const theme = marp.lastGlobalDirectives?.theme ?? 'default'
-  return { slides, css, notes: comments as string[][], aspect: aspectFromCSS(css), theme }
+  const { width, height } = sizeFromCSS(css)
+  return { slides, css, notes: comments as string[][], aspect: width / height, width, height, theme }
 }
 
 export function themes(extraThemes: string[] = []): string[] {

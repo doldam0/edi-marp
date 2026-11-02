@@ -5,6 +5,8 @@ struct RenderResult {
     let css: String
     let notes: [[String]]
     let aspect: Double
+    let width: Double
+    let height: Double
     let theme: String
 }
 
@@ -125,9 +127,11 @@ final class MarpEngine: NSObject, WKNavigationDelegate {
               let slides = dict["slides"] as? [String],
               let css = dict["css"] as? String else { throw EngineError.badResponse }
         let notes = (dict["notes"] as? [[String]]) ?? Array(repeating: [], count: slides.count)
-        let aspect = (dict["aspect"] as? Double) ?? 16 / 9
+        let width = (dict["width"] as? Double) ?? 1280
+        let height = (dict["height"] as? Double) ?? 720
+        let aspect = (dict["aspect"] as? Double) ?? width / height
         let theme = (dict["theme"] as? String) ?? "default"
-        return RenderResult(slides: slides, css: css, notes: notes, aspect: aspect, theme: theme)
+        return RenderResult(slides: slides, css: css, notes: notes, aspect: aspect, width: width, height: height, theme: theme)
     }
 
     func exportHTML(_ source: String, title: String, extraThemes: [String] = []) async throws -> String {

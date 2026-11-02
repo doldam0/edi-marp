@@ -354,6 +354,27 @@ final class Workspace: ObservableObject {
         }
     }
 
+    /// Theme CSS found recursively under a folder, for the headless export,
+    /// which has no `Workspace`. Mirrors the in-app recursive theme scan, so a
+    /// theme in a subfolder (e.g. `themes/`) is included rather than dropped.
+    nonisolated static func themeCSS(in root: URL) -> [String] {
+        let keys: [URLResourceKey] = [.isDirectoryKey, .isRegularFileKey]
+        guard let enumerator = FileManager.default.enumerator(
+            at: root, includingPropertiesForKeys: keys,
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return [] }
+        var result: [String] = []
+        for case let url as URL in enumerator {
+            let values = try? url.resourceValues(forKeys: Set(keys))
+            if values?.isDirectory == true {
+                if ignoredDirectories.contains(url.lastPathComponent) { enumerator.skipDescendants() }
+            } else if values?.isRegularFile == true, url.pathExtension.lowercased() == "css",
+                      let css = try? String(contentsOf: url, encoding: .utf8), themeName(in: css) != nil {
+                result.append(css)
+            }
+        }
+        return result
+    }
+
     nonisolated static func themeName(in css: String) -> String? {
         guard let r = css.range(of: #"/\*\s*@theme\s+([A-Za-z0-9_-]+)"#, options: .regularExpression) else { return nil }
         let frag = String(css[r])
