@@ -33,6 +33,10 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         didSet { scrollView.rulersVisible = showGutter }
     }
 
+    var spellCheck: Bool {
+        didSet { textView.isContinuousSpellCheckingEnabled = spellCheck }
+    }
+
     private let highlighter: SyntaxHighlighter
     private var highlighting = false
     private var boundsObserver: NSObjectProtocol?
@@ -42,6 +46,7 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         let defaults = UserDefaults.standard
         fontSize = CGFloat(defaults.double(forKey: Pref.editorFontSize)).clamped(10, 28)
         showGutter = defaults.bool(forKey: Pref.showGutter)
+        spellCheck = defaults.bool(forKey: Pref.spellCheck)
         let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         switch language {
         case .markdown: highlighter = MarkdownHighlighter(font: font)
@@ -73,7 +78,7 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.isContinuousSpellCheckingEnabled = true
+        textView.isContinuousSpellCheckingEnabled = spellCheck
         textView.isGrammarCheckingEnabled = false
         textView.smartInsertDeleteEnabled = false
         textView.textContainerInset = NSSize(width: 18, height: 16)
@@ -218,20 +223,37 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         textView.window?.makeFirstResponder(textView)
     }
 
-    /// Wraps the selection (or the word at the caret) in `marker` for bold/italic,
-    /// toggling it off when already wrapped. With no word under the caret it
-    /// inserts the empty markers and places the caret between them.
+    /// A line's leading structural marker: indentation then a list bullet
+    /// (`-`/`*`/`+`), an ordered marker (`1.`/`1)`), or a heading (`#`..`######`).
+    /// Bold/italic should wrap the line's text, not its marker.
+    private static let listPrefix = try! NSRegularExpression(pattern: #"^[ \t]*(?:#{1,6}|[-*+]|\d+[.)])[ \t]+"#)
+    private static let indentPrefix = try! NSRegularExpression(pattern: #"^[ \t]*"#)
+
+    /// Wraps the selection, or the current line's text, in `marker` for
+    /// bold/italic, toggling it off when already wrapped. On a line with no
+    /// selection it skips the leading list marker (`- `, `1. `, …) and
+    /// indentation and leaves trailing whitespace alone; an empty line gets the
+    /// markers with the caret between them.
     func toggleInlineWrap(_ marker: String, actionName: String) {
         let ns = textView.string as NSString
-        var range = textView.selectedRange()
-        let hadSelection = range.length > 0
-        if !hadSelection {
-            func isBoundary(_ c: unichar) -> Bool { c == 32 || c == 9 || c == 10 || c == 13 }
-            var lo = range.location, hi = range.location
-            while lo > 0, !isBoundary(ns.character(at: lo - 1)) { lo -= 1 }
-            while hi < ns.length, !isBoundary(ns.character(at: hi)) { hi += 1 }
-            range = NSRange(location: lo, length: hi - lo)
+        let selection = textView.selectedRange()
+        let hadSelection = selection.length > 0
+        let range: NSRange
+        if hadSelection {
+            range = selection
+        } else {
+            var line = ns.lineRange(for: NSRange(location: selection.location, length: 0))
+            if line.length > 0, ns.character(at: line.location + line.length - 1) == 10 { line.length -= 1 }
+            let lineText = ns.substring(with: line)
+            let full = NSRange(location: 0, length: (lineText as NSString).length)
+            let prefix = Self.listPrefix.firstMatch(in: lineText, range: full)
+                ?? Self.indentPrefix.firstMatch(in: lineText, range: full)
+            let prefixLength = prefix?.range.length ?? 0
+            var contentEnd = line.length
+            while contentEnd > prefixLength, isWhitespace(ns.character(at: line.location + contentEnd - 1)) { contentEnd -= 1 }
+            range = NSRange(location: line.location + prefixLength, length: max(0, contentEnd - prefixLength))
         }
+
         let text = ns.substring(with: range)
         let m = marker
         let wrapped = text.hasPrefix(m) && text.hasSuffix(m) && text.count >= 2 * m.count
@@ -242,13 +264,13 @@ final class EditorController: NSObject, NSTextViewDelegate, NSTextStorageDelegat
         let repLen = (replacement as NSString).length
         if !wrapped, text.isEmpty {
             textView.setSelectedRange(NSRange(location: range.location + mLen, length: 0))
-        } else if hadSelection {
-            textView.setSelectedRange(NSRange(location: range.location, length: repLen))
         } else {
-            textView.setSelectedRange(NSRange(location: range.location + repLen, length: 0))
+            textView.setSelectedRange(NSRange(location: range.location, length: repLen))
         }
         textView.window?.makeFirstResponder(textView)
     }
+
+    private func isWhitespace(_ c: unichar) -> Bool { c == 32 || c == 9 }
 
     func moveCaret(to offset: Int, focus: Bool) {
         let length = (textView.string as NSString).length

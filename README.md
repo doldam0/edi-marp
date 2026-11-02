@@ -126,7 +126,7 @@ Things worth calling out:
 | `⌥ ⌘ P` | Start presenting |
 | `⌃ ⌘ I` | Add image(s) to the deck |
 | `⌘ /` | Toggle comment (selection or current line) |
-| `⌘ B` · `⌘ I` | Bold · italic (selection or word) |
+| `⌘ B` · `⌘ I` | Bold · italic (selection, or the line minus its list / heading marker) |
 | `⌘ O` · `⌘ ⇧ N` | Open / new workspace |
 | `⌘ S` · `⌘ ⇧ E` · `⌘ P` | Save · Export HTML · Print |
 | `⌃ ⌘ R` | Reload engine |

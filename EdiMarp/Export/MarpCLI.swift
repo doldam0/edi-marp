@@ -23,9 +23,13 @@ enum MarpCLI {
         }
     }
 
-    /// Candidate locations for the `marp` executable: a copy bundled in the app
-    /// first (for distribution), then the usual Homebrew / npm global paths.
-    private static func findMarp() -> URL? {
+    /// The `marp` executable: an explicit override from Settings first, then a
+    /// copy bundled in the app (for distribution), then Homebrew / npm global.
+    static func findMarp() -> URL? {
+        let override = UserDefaults.standard.string(forKey: Pref.marpPath) ?? ""
+        if !override.isEmpty, FileManager.default.isExecutableFile(atPath: override) {
+            return URL(fileURLWithPath: override)
+        }
         if let bundled = Bundle.main.resourceURL?.appendingPathComponent("marp-cli/marp"),
            FileManager.default.isExecutableFile(atPath: bundled.path) {
             return bundled
@@ -38,7 +42,11 @@ enum MarpCLI {
         return candidates.lazy.map(URL.init(fileURLWithPath:)).first { FileManager.default.isExecutableFile(atPath: $0.path) }
     }
 
-    private static func findChrome() -> URL? {
+    static func findChrome() -> URL? {
+        let override = UserDefaults.standard.string(forKey: Pref.chromePath) ?? ""
+        if !override.isEmpty, FileManager.default.fileExists(atPath: override) {
+            return URL(fileURLWithPath: override)
+        }
         let candidates = [
             "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
             "/Applications/Chromium.app/Contents/MacOS/Chromium",
