@@ -1,17 +1,35 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Installed font families, split into fixed-pitch and proportional, for the
-/// editor font picker. Computed once on first use.
-enum EditorFonts {
-    static let monospaced: [String] = families(fixedPitch: true)
-    static let proportional: [String] = families(fixedPitch: false)
+/// Bridges SwiftUI to the system font panel so the editor font can be chosen
+/// directly, with live family/typeface/size, instead of from a fixed list.
+@MainActor
+final class FontPanelController: NSObject {
+    static let shared = FontPanelController()
 
-    private static func families(fixedPitch: Bool) -> [String] {
-        NSFontManager.shared.availableFontFamilies.filter { family in
-            guard !family.hasPrefix("."), let font = NSFont(name: family, size: 12) else { return false }
-            return font.isFixedPitch == fixedPitch
-        }.sorted()
+    private var current: NSFont = .monospacedSystemFont(ofSize: 13, weight: .regular)
+    private var onChange: ((NSFont) -> Void)?
+
+    func present(current: NSFont, onChange: @escaping (NSFont) -> Void) {
+        self.current = current
+        self.onChange = onChange
+        let manager = NSFontManager.shared
+        manager.target = self
+        manager.action = #selector(changeFont(_:))
+        manager.setSelectedFont(current, isMultiple: false)
+        manager.orderFrontFontPanel(self)
+    }
+
+    @objc func changeFont(_ sender: NSFontManager?) {
+        guard let sender else { return }
+        let newFont = sender.convert(current)
+        current = newFont
+        onChange?(newFont)
+    }
+
+    /// Hide the color/effects controls; only family, typeface, and size matter.
+    @objc func validModesForFontPanel(_ panel: NSFontPanel) -> NSFontPanel.ModeMask {
+        [.collection, .face, .size]
     }
 }
 
@@ -35,19 +53,31 @@ private struct EditorSettings: View {
     @AppStorage(Pref.showGutter) private var showGutter = true
     @AppStorage(Pref.spellCheck) private var spellCheck = true
 
+    private var currentFont: NSFont {
+        (fontName.isEmpty ? nil : NSFont(name: fontName, size: fontSize))
+            ?? .monospacedSystemFont(ofSize: fontSize, weight: .regular)
+    }
+
+    private var fontLabel: String {
+        fontName.isEmpty ? "시스템 고정폭" : (currentFont.displayName ?? fontName)
+    }
+
     var body: some View {
         Form {
             Section("글꼴") {
-                Picker("글꼴 종류", selection: $fontName) {
-                    Text("시스템 고정폭").tag("")
-                    Section("고정폭") {
-                        ForEach(EditorFonts.monospaced, id: \.self) { name in
-                            Text(name).font(.custom(name, size: 13)).tag(name)
-                        }
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(fontLabel).font(.custom(currentFont.fontName, size: 13))
+                        Text("\(Int(fontSize)) pt").font(.caption).foregroundStyle(.secondary)
                     }
-                    Section("일반") {
-                        ForEach(EditorFonts.proportional, id: \.self) { name in
-                            Text(name).font(.custom(name, size: 13)).tag(name)
+                    Spacer()
+                    if !fontName.isEmpty {
+                        Button("기본값") { fontName = "" }
+                    }
+                    Button("글꼴 선택…") {
+                        FontPanelController.shared.present(current: currentFont) { font in
+                            fontName = font.fontName
+                            fontSize = min(24, max(10, Double(font.pointSize)))
                         }
                     }
                 }
