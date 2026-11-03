@@ -1,0 +1,10 @@
+# <type>(<scope>): <subject>   — imperative, lower case, no period, ≤72 chars
+#
+# <body>   — what & why, wrapped at 72 columns
+#
+# <footer>   — BREAKING CHANGE: …, refs, Co-Authored-By:
+#
+# type:  feat fix perf refactor docs style test build ci chore revert
+# scope: editor preview export workspace settings engine ui core
+# Append ! after type/scope for a breaking change, e.g. feat(export)!:
+# See CONTRIBUTING.md.
