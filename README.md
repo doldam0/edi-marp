@@ -205,3 +205,7 @@ rather than to the source tree.) `⌃⌘R` reloads the engine manually.
 
 Commit messages, branches, and releases follow the conventions in
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE) © 2026 doldam0
