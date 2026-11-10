@@ -8,3 +8,4 @@ build/
 *.xcworkspace/xcuserdata
 .build/
 .swiftpm/
+dist/

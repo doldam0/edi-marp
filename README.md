@@ -10,6 +10,14 @@ toggling a directive, switching themes, reordering slides — is a pure
 `(Deck) -> [Edit]` transform applied to the text through one undo stack. There is no
 hidden slide model to drift out of sync, and ⌘Z reverses any action, GUI or typed.
 
+## Download
+
+Grab **EdiMarp.dmg** from the [latest release](https://github.com/doldam0/edi-marp/releases/latest)
+or the [website](https://doldam0.github.io/edi-marp/) — a universal app for
+macOS 26 or later. It is not notarized yet: on first launch, open **System
+Settings → Privacy & Security** and choose **Open Anyway**. A Windows version
+is coming.
+
 ## Running it
 
 Requires macOS 26+ and Xcode 26+. PDF export (and print) shell out to the
@@ -192,3 +200,8 @@ rather than to the source tree.) `⌃⌘R` reloads the engine manually.
 - PPTX / Keynote export (HTML and PDF only).
 - Unused-asset cleanup and broken-link warnings (images are imported and served,
   but not pruned or validated).
+
+## Contributing
+
+Commit messages, branches, and releases follow the conventions in
+[CONTRIBUTING.md](CONTRIBUTING.md).

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+
+jobs:
+  conventions:
+    name: Commit & branch conventions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Branch name
+        if: github.event_name == 'push'
+        run: |
+          branch="${GITHUB_REF_NAME}"
+          pattern='^(main|dev|hotfix/[a-z0-9._-]+|(feat|fix|perf|refactor|docs|style|test|build|ci|chore|revert)/[a-z0-9._-]+)$'
+          if ! printf '%s' "$branch" | grep -qE "$pattern"; then
+            echo "::error::Branch '$branch' does not follow <type>/<summary> (see CONTRIBUTING.md)"
+            exit 1
+          fi
+
+      - name: Commit messages
+        env:
+          BEFORE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          AFTER: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            range="$AFTER"
+          else
+            range="$BEFORE..$AFTER"
+          fi
+          status=0
+          for c in $(git rev-list --no-merges "$range"); do
+            git log -1 --format=%B "$c" > "$RUNNER_TEMP/msg"
+            if ! .githooks/commit-msg "$RUNNER_TEMP/msg" 2>"$RUNNER_TEMP/err"; then
+              echo "::error::$(git log -1 --format='%h %s' "$c")"
+              cat "$RUNNER_TEMP/err"
+              status=1
+            fi
+          done
+          exit $status
+
+  test-core:
+    name: EdiCore tests
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7
+      - run: swift test --package-path Packages/EdiCore
+
+  build-app:
+    name: Build app
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7
+      - name: xcodebuild
+        run: |
+          xcodebuild -project EdiMarp.xcodeproj -scheme EdiMarp -configuration Debug \
+            -derivedDataPath build/DerivedData -destination 'platform=macOS' build
