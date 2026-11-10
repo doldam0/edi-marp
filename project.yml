@@ -23,8 +23,8 @@ targets:
         CFBundleDisplayName: EdiMarp
         CFBundleDevelopmentRegion: ko
         CFBundleLocalizations: [ko]
-        CFBundleShortVersionString: "0.2.0"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         NSHumanReadableCopyright: "© 2026 doldam0"
         NSSupportsAutomaticTermination: true
@@ -56,6 +56,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.doldam0.EdiMarp
+        # Release builds override these from the git tag (scripts/make-dmg.sh).
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5"
         SWIFT_STRICT_CONCURRENCY: minimal
         CODE_SIGN_IDENTITY: "-"
