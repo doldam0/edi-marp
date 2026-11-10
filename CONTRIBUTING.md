@@ -48,8 +48,15 @@ perf(editor): highlight only the edited slide
 ```
 
 A commit template (`.gitmessage`) and hooks in `.githooks/` support this:
-`commit-msg` checks the subject line and `pre-commit` blocks direct commits
-to `main` and `dev`. Enable them once per clone:
+
+| hook | checks |
+| --- | --- |
+| `commit-msg` | the subject line follows the format above |
+| `pre-commit` | you are not committing directly to `main` or `dev` |
+| `pre-push` | pushed branches are `<type>/<summary>` and tags are `vX.Y.Z` |
+
+CI runs the same commit and branch checks on every push, so the rules hold
+even for clones without the hooks. Enable the hooks once per clone:
 
 ```bash
 git config commit.template .gitmessage
@@ -93,7 +100,15 @@ docs/contributing
 git switch main
 git merge --no-ff dev -m "chore(release): v0.2.0"
 git tag -a v0.2.0 -m "v0.2.0"
+git push origin main v0.2.0
 ```
+
+Pushing the tag runs the **Release** workflow: it builds a universal
+`EdiMarp.dmg` with the tag's version (`scripts/make-dmg.sh`), writes release
+notes from the `feat` / `fix` / `perf` commits since the previous tag, and
+attaches the DMG to the GitHub release. The website's download button always
+points at the latest release's `EdiMarp.dmg`. Pushing `main` also redeploys
+the website from `site/`.
 
 **Hotfixes** for a released bug are cut from `main` as `hotfix/<summary>`,
 merged into `main` with `--no-ff` and tagged as a patch release, then merged
