@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Refuse direct commits on the long-lived branches; work happens on
+# <type>/<summary> branches cut from dev. Merges don't run this hook.
+# See CONTRIBUTING.md. Bypass in an emergency with --no-verify.
+
+branch="$(git symbolic-ref --short -q HEAD)"
+
+case "$branch" in
+  main|dev)
+    {
+      echo "✗ Direct commits to '$branch' are not allowed."
+      echo "  Create a work branch from dev, e.g.:"
+      echo "    git switch -c feat/my-change dev"
+      echo "  See CONTRIBUTING.md."
+    } >&2
+    exit 1
+    ;;
+esac
