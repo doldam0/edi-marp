@@ -47,8 +47,9 @@ fix(export): keep backgrounds in PDF/print, find nested themes
 perf(editor): highlight only the edited slide
 ```
 
-A commit template (`.gitmessage`) and a `commit-msg` hook (`.githooks/`)
-support this. Enable both once per clone:
+A commit template (`.gitmessage`) and hooks in `.githooks/` support this:
+`commit-msg` checks the subject line and `pre-commit` blocks direct commits
+to `main` and `dev`. Enable them once per clone:
 
 ```bash
 git config commit.template .gitmessage
@@ -57,24 +58,48 @@ git config core.hooksPath .githooks
 
 ## Branches
 
-Trunk-based, in the spirit of GitHub Flow:
+Two long-lived branches, plus short-lived work branches:
 
-- `main` is always releasable — never commit a broken build to it.
-- Do the work on a short-lived branch cut from `main`, named
-  `<type>/<short-kebab-summary>` using the same types as commits:
+| branch | role | updated by |
+| --- | --- | --- |
+| `main` | released code only; every commit on it is a tagged release | release and hotfix merges |
+| `dev` | integration; the next release in progress, always builds | work-branch merges |
 
-  ```
-  feat/system-font-panel
-  fix/gutter-bleed
-  refactor/deck-session
-  docs/contributing
-  ```
+```
+feat/… ─┐                      hotfix/… ─┐ (from main)
+        ▼                                ▼
+dev ────●──●──●───── release ──▶ main ───●── tag ──▶ merged back into dev
+```
 
-- Open a pull request into `main`. Rebase on `main` before merging and keep
-  history linear (rebase or squash merge — avoid merge commits).
+**Work branches** are cut from `dev` and named `<type>/<short-kebab-summary>`
+with the same types as commits:
+
+```
+feat/system-font-panel
+fix/gutter-bleed
+refactor/deck-session
+docs/contributing
+```
+
+- Rebase on `dev` before merging and merge with a fast-forward or squash, so
+  `dev` stays linear.
 - Delete the branch after it merges.
+- Never commit directly to `main` or `dev`; the `pre-commit` hook in
+  `.githooks/` refuses it (merges still go through).
 
-## Releases
+**Releases** go from `dev` to `main`:
+
+```bash
+git switch main
+git merge --no-ff dev -m "chore(release): v0.2.0"
+git tag -a v0.2.0 -m "v0.2.0"
+```
+
+**Hotfixes** for a released bug are cut from `main` as `hotfix/<summary>`,
+merged into `main` with `--no-ff` and tagged as a patch release, then merged
+into `dev` so the fix isn't lost.
+
+## Versions
 
 Tag releases on `main` with [SemVer](https://semver.org/): `vMAJOR.MINOR.PATCH`
 (e.g. `v0.2.0`). Before `v1.0.0` the format and API may change between minor
