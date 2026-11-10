@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
+
+jobs:
+  dmg:
+    name: Build DMG and publish release
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Build EdiMarp.dmg
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/make-dmg.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Release notes from Conventional Commits
+        run: |
+          tag="$GITHUB_REF_NAME"
+          prev="$(git describe --tags --abbrev=0 --match 'v*.*.*' "$tag^" 2>/dev/null || true)"
+          range="${prev:+$prev..}$tag"
+          section() {
+            local title="$1" type="$2" lines
+            lines="$(git log --no-merges --format='%s (%h)' "$range" \
+              | grep -E "^$type(\([^)]*\))?!?: " \
+              | sed -E "s/^$type(\(([^)]*)\))?!?: /- **\2** /; s/\*\*\*\* //" || true)"
+            if [ -n "$lines" ]; then printf '### %s\n\n%s\n\n' "$title" "$lines"; fi
+          }
+          {
+            section "Features" feat
+            section "Fixes" fix
+            section "Performance" perf
+            echo "**Download:** \`EdiMarp.dmg\` below — macOS 26 or later, Apple Silicon and Intel."
+            echo
+            echo "The app is not notarized yet. On first launch, open **System Settings → Privacy & Security** and choose **Open Anyway**."
+            if [ -n "$prev" ]; then
+              printf '\n**Full changelog:** %s/%s/compare/%s...%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$prev" "$tag"
+            fi
+          } > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$tag" --verify-tag --title "edi · marp $tag" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+          gh release upload "$tag" dist/EdiMarp.dmg dist/EdiMarp.dmg.sha256 --clobber
